@@ -2,11 +2,11 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "novidio-vgpu-driver">
   <!ENTITY author    "novidio">
-  <!ENTITY version   "2025.01.22a">
+  <!ENTITY version   "2026.03.01a">
   <!ENTITY launch    "Settings/novidio-vgpu-driver">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "3a8207419a27af795d14fa8cf17cc23f">
+  <!ENTITY md5       "81f02a0f7baa0f5d0f8d80aa63fb0eaf">
   <!ENTITY plugin    "/boot/config/plugins/&name;">
   <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
   <!ENTITY packages  "/boot/config/plugins/&name;/packages">
@@ -15,6 +15,10 @@
 <PLUGIN  name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.01
+- Update vGPU version list to 580.82.07
+- Fix version list fetch in download script
+
 ##2025.01.22
 - Fix naming issues and plugin page name
 - improve plugin page layout
