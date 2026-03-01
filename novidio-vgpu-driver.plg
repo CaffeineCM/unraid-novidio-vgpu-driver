@@ -254,18 +254,18 @@ fi
 ### RESTART NVIDIA PROCESS
 if pgrep -x nvidia-vgpud > /dev/null
 then
-    command -v nvidia-vgpud >/dev/null 2>&1 && nvidia-vgpud stop
+    command -v nvidia-vgpud >/dev/null 2&gt;&amp;1 &amp;&amp; nvidia-vgpud stop
 fi
 if pgrep -x nvidia-vgpu-mgr > /dev/null
 then
-    command -v nvidia-vgpu-mgr >/dev/null 2>&1 && nvidia-vgpu-mgr stop
+    command -v nvidia-vgpu-mgr >/dev/null 2&gt;&amp;1 &amp;&amp; nvidia-vgpu-mgr stop
     killall nvidia-vgpu-mgr
 fi
 sleep 3
-if command -v nvidia-vgpud >/dev/null 2>&1; then
+if command -v nvidia-vgpud >/dev/null 2&gt;&amp;1; then
   LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpud
 fi
-if command -v nvidia-vgpu-mgr >/dev/null 2>&1; then
+if command -v nvidia-vgpu-mgr >/dev/null 2&gt;&amp;1; then
   LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpu-mgr
 fi
 
