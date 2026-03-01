@@ -2,11 +2,11 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "novidio-vgpu-driver">
   <!ENTITY author    "CaffeineCM">
-  <!ENTITY version   "2026.03.01b">
+  <!ENTITY version   "2026.03.01c">
   <!ENTITY launch    "Settings/novidio-vgpu-driver">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "a55f6136fff37baba275c44943afcfdc">
+  <!ENTITY md5       "6597b84012f52d6f9b9586b6db714fa2">
   <!ENTITY plugin    "/boot/config/plugins/&name;">
   <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
   <!ENTITY packages  "/boot/config/plugins/&name;/packages">
@@ -15,6 +15,9 @@
 <PLUGIN  name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.01c
+- Fix .page file format (LF, no BOM) to avoid webgui white screen
+
 ##2026.03.01b
 - Point plugin downloads to CaffeineCM repository
 
