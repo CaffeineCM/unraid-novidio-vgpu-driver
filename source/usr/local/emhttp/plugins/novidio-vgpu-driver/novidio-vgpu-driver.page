@@ -4,16 +4,16 @@ Icon="/plugins/novidio-vgpu-driver/images/nvidia-driver.png"
 ---
 <?php
 //Get selected driver version
-//$selected_v = shell_exec("/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_selected_version");
+$selected_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_selected_version'));
 
 //Update driver versions and create file '/tmp/novidio_vgpu_driver'
 shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh update');
 
 //Get latest version
-$latest_v = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_latest_version');
+$latest_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_latest_version'));
 
 //Get current installed driver version
-$installed_v = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_installed_version');
+$installed_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_installed_version'));
 
 //Get mdevctl list
 $mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
@@ -21,6 +21,12 @@ $mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/e
 //Read driver versions from '/tmp/novidio_vgpu_driver'
 error_reporting(E_ALL);
 ini_set('display_errors',1);
+$available_versions = [];
+$version_file = '/tmp/novidio_vgpu_driver';
+if (file_exists($version_file)) {
+	$available_versions = array_filter(array_map('trim', file($version_file, FILE_IGNORE_NEW_LINES)));
+	$available_versions = array_values(array_unique($available_versions));
+}
 
 //Get value from update check
 //$update_check = shell_exec("/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh update_check");
@@ -188,6 +194,28 @@ function setFormatButton() {
 </script>
 
 <h1 style="text-align: center;"><a href="https://forums.unraid.net/" target="_blank" rel="noopener"><span style="color: green;">Nvidia vGPU Driver Package</span></a></h1>
+
+<div style="width: 100%; clear: both; margin-bottom: 18px;">
+    <form method="POST" onsubmit="return changeVersion(this);">
+        <table class="settings" style="margin-top: 0; width: 100%;">
+            <tr>
+                <td><b><font size="+1">Driver Version</font></b></td>
+                <td>
+                    <select name="drv_version" style="min-width: 180px;">
+                        <option value="latest" <?=$selected_v === 'latest' ? 'selected' : ''?>>latest</option>
+                        <? foreach ($available_versions as $version): ?>
+                            <option value="<?=$version?>" <?=$selected_v === $version ? 'selected' : ''?>><?=$version?></option>
+                        <? endforeach; ?>
+                    </select>
+                    <input type="submit" value="Download / Select">
+                </td>
+                <td>Selected: <span style="color:green"><b><?=htmlspecialchars($selected_v ?: 'latest')?></b></span></td>
+                <td>Installed: <span style="color:green"><b><?=htmlspecialchars($installed_v ?: 'unknown')?></b></span></td>
+                <td>Latest: <span style="color:green"><b><?=htmlspecialchars($latest_v ?: 'unknown')?></b></span></td>
+            </tr>
+        </table>
+    </form>
+</div>
 
 <div style="width: 50%; float:left">
     <div id="title">

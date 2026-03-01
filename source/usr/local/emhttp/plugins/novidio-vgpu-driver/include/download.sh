@@ -91,6 +91,18 @@ if [ "${SET_DRV_V}" == "latest" ]; then
       LAT_PACKAGE=$CUR_V
     fi
   fi
+else
+  export LAT_PACKAGE="$(echo "$DRIVER_AVAIL" | grep -F -- "${SET_DRV_V}" | tail -1)"
+  if [ -z "$LAT_PACKAGE" ]; then
+    if [ -z "${CUR_V}" ]; then
+      echo
+      echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
+      echo "------Can't find selected Nvidia vGPU driver version in available releases------"
+      exit 1
+    else
+      LAT_PACKAGE=$CUR_V
+    fi
+  fi
 fi
 
 #Begin Check
