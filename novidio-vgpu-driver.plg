@@ -1,18 +1,5 @@
 <?xml version='1.0' standalone='yes'?>
-<!DOCTYPE PLUGIN [
-  <!ENTITY name      "novidio-vgpu-driver">
-  <!ENTITY author    "CaffeineCM">
-  <!ENTITY version   "2026.03.01c">
-  <!ENTITY launch    "Settings/novidio-vgpu-driver">
-  <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/master">
-  <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "6597b84012f52d6f9b9586b6db714fa2">
-  <!ENTITY plugin    "/boot/config/plugins/&name;">
-  <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
-  <!ENTITY packages  "/boot/config/plugins/&name;/packages">
-]>
-
-<PLUGIN  name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.01c" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
 ##2026.03.01c
@@ -61,16 +48,16 @@
 
 <FILE Run="/bin/bash">
 <INLINE>
-rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null|grep -v '&version;')
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.01c')
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-<URL>&gitURL;/packages/&name;-&version;.txz</URL>
-<MD5>&md5;</MD5>
+<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.01c.txz" Run="upgradepkg --install-new">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.01c.txz</URL>
+<MD5>6597b84012f52d6f9b9586b6db714fa2</MD5>
 </FILE>
 
-<FILE Name="&emhttp;/README.md">
+<FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
 <INLINE>
 **Novidio Vgpu Driver**
 
@@ -83,22 +70,22 @@ This plugin will install the nvidia vgpu driver, which will reuse your graphics 
 
 download() {
 #Download Nvidia Vgpu Driver Package
-if wget -q -nc --show-progress --progress=bar:force:noscroll -O "&packages;/${KERNEL_V%%-*}/${LAT_PACKAGE}" "${DL_URL}/${LAT_PACKAGE}" ; then
-  wget -q -nc --show-progress --progress=bar:force:noscroll -O "&packages;/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5" "${DL_URL}/${LAT_PACKAGE}.md5"
-  if [ "$(md5sum &packages;/${KERNEL_V%%-*}/${LAT_PACKAGE} | awk '{print $1}')" != "$(cat &packages;/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5 | awk '{print $1}')" ]; then
+if wget -q -nc --show-progress --progress=bar:force:noscroll -O "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}" "${DL_URL}/${LAT_PACKAGE}" ; then
+  wget -q -nc --show-progress --progress=bar:force:noscroll -O "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5" "${DL_URL}/${LAT_PACKAGE}.md5"
+  if [ "$(md5sum /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE} | awk '{print $1}')" != "$(cat /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5 | awk '{print $1}')" ]; then
     echo
     echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
     echo "--------------------------------CHECKSUM ERROR!---------------------------------"
-    rm -rf &plugin; &emhttp;
+    rm -rf /boot/config/plugins/novidio-vgpu-driver /usr/local/emhttp/plugins/novidio-vgpu-driver;
     exit 1
   fi
   echo
-  sed -i '/driver_version=/c\driver_version=latest' "&plugin;/settings.cfg"
+  sed -i '/driver_version=/c\driver_version=latest' "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
   echo "----Successfully downloaded Nvidia Vgpu Driver Package v$(echo $LAT_PACKAGE | cut -d '-' -f3), please wait!----"
 else
   echo
   echo "--------------Can't download Nvidia Driver Package v$(echo $LAT_PACKAGE | cut -d '-' -f3)-----------------"
-  rm -rf &plugin; &emhttp;
+  rm -rf /boot/config/plugins/novidio-vgpu-driver /usr/local/emhttp/plugins/novidio-vgpu-driver;
   exit 1
 fi
 }
@@ -110,7 +97,7 @@ if [ -z "$LAT_PACKAGE" ]; then
     echo
     echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
     echo "---Can't get latest Nvidia vgpu driver version and found no installed local driver---"
-    rm -rf &plugin; &emhttp;
+    rm -rf /boot/config/plugins/novidio-vgpu-driver /usr/local/emhttp/plugins/novidio-vgpu-driver;
     exit 1
   else
     LAT_PACKAGE=${CUR_V}
@@ -120,7 +107,7 @@ fi
 
 #Check if driver is already downloaded
 check() {
-if ! ls -1 &packages;/${KERNEL_V%%-*}/ | grep -q "${PACKAGE}" ; then
+if ! ls -1 /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/ | grep -q "${PACKAGE}" ; then
   get_version
   echo
   echo "+=============================================================================="
@@ -143,7 +130,7 @@ fi
 
 #Install driver package
 install() {
-/sbin/installpkg "&packages;/${KERNEL_V%%-*}/${PACKAGE}*.txz"
+/sbin/installpkg "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${PACKAGE}*.txz"
 depmod -a >> /dev/null
 nvidia-modprobe  >> /dev/null
 }
@@ -153,7 +140,7 @@ if [ "$(which Xorg 2>/dev/null)" ] &amp;&amp; [ "$(cat /boot/config/plugins/novi
   nvidia-xconfig --output-xconfig=/etc/X11/xorg.conf --silent 2>/dev/null
 fi
 if [[ "$SET_DRV_V" != "latest" &amp;&amp; "$SET_DRV_V" != "latest_prb" &amp;&amp; "$SET_DRV_V" != "latest_nfb" ]]; then
-  sed -i '/update_check=/c\update_check=false' "&plugin;/settings.cfg"
+  sed -i '/update_check=/c\update_check=false' "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
 fi
 }
 
@@ -162,19 +149,19 @@ KERNEL_V="$(uname -r)"
 PACKAGE="nvidia"
 DL_URL="https://github.com/CaffeineCM/unraid-novidio-vgpu-driver/releases/download/${KERNEL_V}"
 
-if [ ! -d "&packages;/${KERNEL_V%%-*}" ]; then
-  mkdir -p "&packages;/${KERNEL_V%%-*}"
+if [ ! -d "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}" ]; then
+  mkdir -p "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}"
   CUR_V=""
 else
-  CUR_V="$(ls -p &packages;/${KERNEL_V%%-*} 2&gt;/dev/null | grep -E -v '\.md5' | sort -V | tail -1)"
+  CUR_V="$(ls -p /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*} 2&gt;/dev/null | grep -E -v '\.md5' | sort -V | tail -1)"
 fi
 
 #Create settings file if not found
-if [ ! -f "&plugin;/settings.cfg" ]; then
+if [ ! -f "/boot/config/plugins/novidio-vgpu-driver/settings.cfg" ]; then
   echo 'first_installation=true
 driver_version=latest
 disable_xconfig=false
-update_check=true' > "&plugin;/settings.cfg"
+update_check=true' > "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
 fi
 
 ###### SETUP - THIS REPLACES THE USER SCRIPT
@@ -207,26 +194,26 @@ env LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so >/dev/null
 
 
 #Add update check entry if not exists
-if [ ! "$(grep -q "update_check=" &plugin;/settings.cfg)" ]; then
-  echo "update_check=true" &gt;&gt; &plugin;/settings.cfg
+if [ ! "$(grep -q "update_check=" /boot/config/plugins/novidio-vgpu-driver/settings.cfg)" ]; then
+  echo "update_check=true" &gt;&gt; /boot/config/plugins/novidio-vgpu-driver/settings.cfg
 fi
 
-if [ "$(grep -q "local_version=" &plugin;/settings.cfg)" ]; then
-  sed -i '/local_version=/d' &plugin;/settings.cfg
+if [ "$(grep -q "local_version=" /boot/config/plugins/novidio-vgpu-driver/settings.cfg)" ]; then
+  sed -i '/local_version=/d' /boot/config/plugins/novidio-vgpu-driver/settings.cfg
 fi
 
 #Move old package directory to new package directory to be compliant with 6.11
-if find &packages; -maxdepth 1 -type f -name "*.txz" 2>/dev/null ; then
-  mv $(find &packages; -maxdepth 1 -type f -name "*.txz") &packages;/${KERNEL_V%%-*}/ 2>/dev/null
-  CUR_V="$(ls -p &packages;/${KERNEL_V%%-*} 2&gt;/dev/null | grep -E -v '\.md5' | sort -V | tail -1)"
+if find /boot/config/plugins/novidio-vgpu-driver/packages -maxdepth 1 -type f -name "*.txz" 2>/dev/null ; then
+  mv $(find /boot/config/plugins/novidio-vgpu-driver/packages -maxdepth 1 -type f -name "*.txz") /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/ 2>/dev/null
+  CUR_V="$(ls -p /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*} 2&gt;/dev/null | grep -E -v '\.md5' | sort -V | tail -1)"
 fi
 
 #Check if Nvidia vgpu Driver Package is already downloaded
 check
 
 #Check for old packages that are not suitable for this Kernel and not suitable for the current Nvidia vgpu driver version
-rm -f $(ls -d &packages;/* 2>/dev/null | grep -v "${KERNEL_V%%-*}")
-rm -f $(ls &packages;/${KERNEL_V%%-*}/* 2>/dev/null | grep -v "$LAT_PACKAGE")
+rm -f $(ls -d /boot/config/plugins/novidio-vgpu-driver/packages/* 2>/dev/null | grep -v "${KERNEL_V%%-*}")
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/* 2>/dev/null | grep -v "$LAT_PACKAGE")
 
 #Install Nvidia vgpu Driver Package
 if ! modinfo nvidia -0 >/dev/null 2>&amp;1 ; then
@@ -246,15 +233,15 @@ if [ "$UPDATE_CHECK" == "true" ]; then
 fi
 
 #Display message to disable and enable Docker on first installation or display successful message
-if [ "$(grep "first_installation=" "&plugin;/settings.cfg" | cut -d '=' -f2)" == "true" ]; then
+if [ "$(grep "first_installation=" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg" | cut -d '=' -f2)" == "true" ]; then
   /usr/local/emhttp/plugins/dynamix/scripts/notify -e "Nvidia Vgpu Driver" -d "Please go to -> Settings -> novidio-vgpu-driver Perform Set up"
-  sed -i '/first_installation=true/c\first_installation=false' "&plugin;/settings.cfg"
+  sed -i '/first_installation=true/c\first_installation=false' "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
   echo
   echo "------------Installation of Nvidia vgpu driver v$(echo $LAT_PACKAGE | cut -d '-' -f3) successful----------------"
   echo
   echo "Nvidia Vgpu Driver" -d "Please go to -> Settings -> novidio-vgpu-driver Perform Set up"
 else
-  sed -i '/first_installation=true/c\first_installation=false' "&plugin;/settings.cfg"
+  sed -i '/first_installation=true/c\first_installation=false' "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
   echo
   echo "--------------Installation of Nvidia vgpu driver v$(echo $LAT_PACKAGE | cut -d '-' -f3) successful--------------"
 fi
@@ -283,10 +270,10 @@ echo "----------------------------------------"
 echo "---Uninstalling Nvidia vGPU driver package---"
 echo "----------------------------------------"
 # Remove plugin related files
-removepkg &name;-&version;
+removepkg novidio-vgpu-driver-2026.03.01c;
 crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &amp;&gt;/dev/null 2&gt;&amp;1'  | crontab -
-rm -rf /usr/local/emhttp/plugins/&name;
-rm -rf &plugin;
+rm -rf /usr/local/emhttp/plugins/novidio-vgpu-driver;
+rm -rf /boot/config/plugins/novidio-vgpu-driver;
 echo
 echo "--------------------------------------------------------------------------------"
 echo "-------------Nvidia vGPU Driver uninstalled, please reboot your server!--------------"

@@ -1,0 +1,5 @@
+*.plg text eol=lf
+*.page text eol=lf
+*.sh text eol=lf
+plugin_update_helper text eol=lf
+novidio_vgpu_versions text eol=lf
