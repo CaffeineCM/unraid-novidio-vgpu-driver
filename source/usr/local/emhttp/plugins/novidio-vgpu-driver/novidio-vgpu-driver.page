@@ -15,6 +15,9 @@ $latest_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/inclu
 //Get current installed driver version
 $installed_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_installed_version'));
 
+//Get prepared driver version
+$prepared_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_prepared_version'));
+
 //Get mdevctl list
 $mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
 
@@ -43,11 +46,12 @@ if (file_exists($version_file)) {
 </script>
 
 <script>
-function changeVersion(form) {
-    var package = form.drv_version.value;
-    openBox("/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh&arg1=update_version&arg2="+package,"Downloading Package",600,800,true);
+function driverAction(form, action, title) {
+    var version = encodeURIComponent(form.drv_version.value);
+    var actionName = encodeURIComponent(action);
+    openBox("/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh&arg1=run_action&arg2="+actionName+"&arg3="+version,title,700,900,true);
     return false;
-    }
+}
 </script>
 
 <?
@@ -196,7 +200,7 @@ function setFormatButton() {
 <h1 style="text-align: center;"><a href="https://forums.unraid.net/" target="_blank" rel="noopener"><span style="color: green;">Nvidia vGPU Driver Package</span></a></h1>
 
 <div style="width: 100%; clear: both; margin-bottom: 18px;">
-    <form method="POST" onsubmit="return changeVersion(this);">
+    <form method="POST" onsubmit="return false;">
         <table class="settings" style="margin-top: 0; width: 100%;">
             <tr>
                 <td><b><font size="+1">Driver Version</font></b></td>
@@ -207,11 +211,20 @@ function setFormatButton() {
                             <option value="<?=$version?>" <?=$selected_v === $version ? 'selected' : ''?>><?=$version?></option>
                         <? endforeach; ?>
                     </select>
-                    <input type="submit" value="Download / Select">
+                    <input type="button" value="Hot Upgrade" onclick="return driverAction(this.form,'hot_upgrade','Hot Upgrade Driver');">
+                    <input type="button" value="Download Only" onclick="return driverAction(this.form,'download_only','Download Driver');">
+                    <input type="button" value="Download + Reboot" onclick="return driverAction(this.form,'download_reboot','Download And Reboot');">
                 </td>
                 <td>Selected: <span style="color:green"><b><?=htmlspecialchars($selected_v ?: 'latest')?></b></span></td>
                 <td>Installed: <span style="color:green"><b><?=htmlspecialchars($installed_v ?: 'unknown')?></b></span></td>
+                <td>Prepared: <span style="color:green"><b><?=htmlspecialchars($prepared_v ?: 'none')?></b></span></td>
                 <td>Latest: <span style="color:green"><b><?=htmlspecialchars($latest_v ?: 'unknown')?></b></span></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td colspan="5" style="color:#666;">
+                    `Hot Upgrade` is experimental. `Download Only` prepares a driver for later. `Download + Reboot` downloads now and reboots to apply the prepared driver.
+                </td>
             </tr>
         </table>
     </form>

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+DRIVER_HELPER="/usr/local/emhttp/plugins/novidio-vgpu-driver/include/driver.sh"
+
 fetch_driver_assets() {
 KERNEL_V="$(uname -r)"
 PACKAGE="nvidia"
@@ -18,12 +20,7 @@ fi
 }
 
 function update_version(){
-sed -i "/driver_version=/c\driver_version=${1}" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
-if [ "${1}" != "latest" ]; then
-  sed -i "/update_check=/c\update_check=false" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
-  echo -n "$(crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1'  | crontab -)"
-fi
-/usr/local/emhttp/plugins/novidio-vgpu-driver/include/download.sh
+run_action download_only "${1}"
 }
 
 function get_latest_version(){
@@ -45,6 +42,10 @@ echo -n "$(cat /boot/config/plugins/novidio-vgpu-driver/settings.cfg | grep "dri
 
 function get_installed_version(){
 echo -n "$(modinfo nvidia | grep -w "version:" | awk '{print $2}')"
+}
+
+function get_prepared_version(){
+echo -n "$(${DRIVER_HELPER} prepared_version 2>/dev/null)"
 }
 
 function update_check(){
@@ -72,6 +73,16 @@ elif [ "${1}" == "false" ]; then
   echo -n "$(crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1'  | crontab -)"
 fi
 
+}
+
+function run_action(){
+version="${2:-latest}"
+sed -i "/driver_version=/c\driver_version=${version}" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
+if [ "${version}" != "latest" ]; then
+  sed -i "/update_check=/c\update_check=false" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
+  echo -n "$(crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1'  | crontab -)"
+fi
+${DRIVER_HELPER} "${1}" "${version}"
 }
 
 $@

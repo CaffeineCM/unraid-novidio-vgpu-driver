@@ -48,3 +48,4 @@ elif [ "${SET_DRV_V}" == "latest" ]; then
 #Check for old packages that are not suitable for this Kernel and not suitable for the current Nvidia driver version
 rm -f $(ls -d /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/* 2>/dev/null | grep -v "${KERNEL_V%%-*}")
 rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/* 2>/dev/null | grep -v "$LAT_PACKAGE")
+fi
