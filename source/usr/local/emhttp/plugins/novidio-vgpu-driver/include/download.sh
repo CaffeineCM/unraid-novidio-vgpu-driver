@@ -1,5 +1,9 @@
 #!/bin/bash
 
+package_version() {
+echo "${1}" | sed -nE 's/^nvidia-([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
+}
+
 # Define Variables
 export KERNEL_V="$(uname -r)"
 export PACKAGE="nvidia"
@@ -21,17 +25,17 @@ if wget -q -nc --show-progress --progress=bar:force:noscroll -O "/boot/config/pl
     exit 1
   fi
   echo
-  echo "-----------Successfully downloaded Nvidia vGPU Driver Package v$(echo $LAT_PACKAGE | cut -d '-' -f3)-----------"
+  echo "-----------Successfully downloaded Nvidia vGPU Driver Package v$(package_version "$LAT_PACKAGE")-----------"
 else
   echo
-  echo "---------------Can't download Nvidia vGPU Driver Package v$(echo $LAT_PACKAGE | cut -d '-' -f3)----------------"
+  echo "---------------Can't download Nvidia vGPU Driver Package v$(package_version "$LAT_PACKAGE")----------------"
   exit 1
 fi
 }
 
 #Check if driver is already downloaded
 check() {
-if ! ls -1 /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/ | grep -q "${PACKAGE}-$(echo $LAT_PACKAGE | cut -d '-' -f3)" ; then
+if ! ls -1 /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/ | grep -F -q "${LAT_PACKAGE}" ; then
   echo
   echo "+=============================================================================="
   echo "| WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING"
@@ -41,12 +45,12 @@ if ! ls -1 /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/ | 
   echo "| WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING"
   echo "+=============================================================================="
   echo
-  echo "----------------Downloading Nvidia vGPU Driver Package v$(echo $LAT_PACKAGE | cut -d '-' -f3)-----------------"
+  echo "----------------Downloading Nvidia vGPU Driver Package v$(package_version "$LAT_PACKAGE")-----------------"
   echo "---------This could take some time, please don't close this window!------------"
   download
 else
   echo
-  echo "---------Noting to do, Nvidia vGPU Drivers v$(echo $LAT_PACKAGE | cut -d '-' -f3) already downloaded!---------"
+  echo "---------Noting to do, Nvidia vGPU Drivers v$(package_version "$LAT_PACKAGE") already downloaded!---------"
   echo
   echo "------------------------------Verifying CHECKSUM!------------------------------"
   if [ "$(md5sum /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE} | awk '{print $1}')" != "$(cat /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5 | awk '{print $1}')" ]; then
@@ -55,7 +59,7 @@ else
     echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR-----"
     echo "--------------------------------CHECKSUM ERROR!--------------------------------"
     echo
-    echo "---------------Trying to redownload the Nvidia Vgpu Driver v$(echo $LAT_PACKAGE | cut -d '-' -f3)-------------"
+    echo "---------------Trying to redownload the Nvidia Vgpu Driver v$(package_version "$LAT_PACKAGE")-------------"
     echo
     echo "+=============================================================================="
     echo "| WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING"
@@ -114,5 +118,5 @@ rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/* 2
 
 #Display message to reboot server both in Plugin and WebUI
 echo
-echo "----To install the new Nvidia vGPU Driver v$(echo $LAT_PACKAGE | cut -d '-' -f3) please reboot your Server!----"
-/usr/local/emhttp/plugins/dynamix/scripts/notify -e "Nvidia vGPU Driver" -d "To install the new Nvidia vGPU Driver v$(echo $LAT_PACKAGE | cut -d '-' -f3) please reboot your Server!" -i "alert" -l "/Main"
+echo "----To install the new Nvidia vGPU Driver v$(package_version "$LAT_PACKAGE") please reboot your Server!----"
+/usr/local/emhttp/plugins/dynamix/scripts/notify -e "Nvidia vGPU Driver" -d "To install the new Nvidia vGPU Driver v$(package_version "$LAT_PACKAGE") please reboot your Server!" -i "alert" -l "/Main"
