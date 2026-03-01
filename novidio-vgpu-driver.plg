@@ -1,7 +1,10 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.01j" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02a" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.02a
+- Restore executable permissions for plugin shell helpers so version detection works
+
 ##2026.03.01j
 - Fix missing function terminator in exec.sh after removing version cache
 
@@ -72,13 +75,13 @@
 
 <FILE Run="/bin/bash">
 <INLINE>
-rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.01j')
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.02a')
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.01j.txz" Run="upgradepkg --install-new --reinstall">
-<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.01j.txz</URL>
-<MD5>101d3eebd0ece2fd11bc4b903205824b</MD5>
+<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.02a.txz" Run="upgradepkg --install-new --reinstall">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.02a.txz</URL>
+<MD5>ecb0777ad038f90cfca9bb3da8e2be78</MD5>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
@@ -298,7 +301,7 @@ echo "----------------------------------------"
 echo "---Uninstalling Nvidia vGPU driver package---"
 echo "----------------------------------------"
 # Remove plugin related files
-removepkg novidio-vgpu-driver-2026.03.01j;
+removepkg novidio-vgpu-driver-2026.03.02a;
 crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &amp;&gt;/dev/null 2&gt;&amp;1'  | crontab -
 rm -rf /usr/local/emhttp/plugins/novidio-vgpu-driver;
 rm -rf /boot/config/plugins/novidio-vgpu-driver;
