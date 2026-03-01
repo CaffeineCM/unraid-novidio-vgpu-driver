@@ -1,6 +1,6 @@
 Menu="Utilities"
 Title="Novidio Vgpu Driver"
-Icon="nvidia-driver.png"
+Icon="/plugins/novidio-vgpu-driver/images/nvidia-driver.png"
 ---
 <?php
 //Get selected driver version

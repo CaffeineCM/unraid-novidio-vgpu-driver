@@ -1,7 +1,12 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.01c" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.01d" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.01d
+- Add plugin icon metadata for the Plugins page
+- Use an explicit icon path for the Settings page
+- Skip restarting vGPU daemons when the commands are unavailable
+
 ##2026.03.01c
 - Fix .page file format (LF, no BOM) to avoid webgui white screen
 
@@ -48,13 +53,13 @@
 
 <FILE Run="/bin/bash">
 <INLINE>
-rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.01c')
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.01d')
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.01c.txz" Run="upgradepkg --install-new">
-<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.01c.txz</URL>
-<MD5>6597b84012f52d6f9b9586b6db714fa2</MD5>
+<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.01d.txz" Run="upgradepkg --install-new --reinstall">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.01d.txz</URL>
+<MD5>2be277f6fe6054df03a403814b5de0eb</MD5>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
@@ -249,16 +254,20 @@ fi
 ### RESTART NVIDIA PROCESS
 if pgrep -x nvidia-vgpud > /dev/null
 then
-    nvidia-vgpud stop
+    command -v nvidia-vgpud >/dev/null 2>&1 && nvidia-vgpud stop
 fi
 if pgrep -x nvidia-vgpu-mgr > /dev/null
 then
-    nvidia-vgpu-mgr stop
+    command -v nvidia-vgpu-mgr >/dev/null 2>&1 && nvidia-vgpu-mgr stop
     killall nvidia-vgpu-mgr
 fi
 sleep 3
-LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpud 
-LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpu-mgr
+if command -v nvidia-vgpud >/dev/null 2>&1; then
+  LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpud
+fi
+if command -v nvidia-vgpu-mgr >/dev/null 2>&1; then
+  LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpu-mgr
+fi
 
 </INLINE>
 </FILE>
@@ -270,7 +279,7 @@ echo "----------------------------------------"
 echo "---Uninstalling Nvidia vGPU driver package---"
 echo "----------------------------------------"
 # Remove plugin related files
-removepkg novidio-vgpu-driver-2026.03.01c;
+removepkg novidio-vgpu-driver-2026.03.01d;
 crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &amp;&gt;/dev/null 2&gt;&amp;1'  | crontab -
 rm -rf /usr/local/emhttp/plugins/novidio-vgpu-driver;
 rm -rf /boot/config/plugins/novidio-vgpu-driver;
