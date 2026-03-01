@@ -1,25 +1,21 @@
 #!/bin/bash
 
-function update(){
+fetch_driver_assets() {
 KERNEL_V="$(uname -r)"
 PACKAGE="nvidia"
-CURENTTIME=$(date +%s)
-CHK_TIMEOUT=300
-if [ -f /tmp/novidio_vgpu_driver ]; then
-  FILETIME=$(stat /tmp/novidio_vgpu_driver -c %Y)
-  DIFF=$(expr $CURENTTIME - $FILETIME)
-  if [ $DIFF -gt $CHK_TIMEOUT ]; then
-    echo -n "$(wget -qO- https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "${PACKAGE}" | grep -E -v '\.md5$' | awk -F "-" '{print $3}' | sort -V | tail -10)" > /tmp/novidio_vgpu_driver
-    if [ ! -s /tmp/novidio_vgpu_driver ]; then
-      echo -n "$(modinfo nvidia | grep "version:" | awk '{print $2}' | head -1)" > /tmp/novidio_vgpu_driver
-    fi
-  fi
-else
-  echo -n "$(wget -qO- https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "${PACKAGE}" | grep -E -v '\.md5$' | awk -F "-" '{print $3}' | sort -V | tail -10)" > /tmp/novidio_vgpu_driver
-  if [ ! -s /tmp/novidio_vgpu_driver ]; then
-    echo -n "$(modinfo nvidia | grep "version:" | awk '{print $2}' | head -1)" > /tmp/novidio_vgpu_driver
-  fi
+wget -qO- "https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V}" | jq -r '.assets[].name' | grep -E "^${PACKAGE}.*\.txz$" | grep -E -v '\.md5$' | sort -V
+}
+
+extract_driver_versions() {
+sed -nE 's/^nvidia[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' | sort -Vu
+}
+
+function update(){
+echo -n "$(fetch_driver_assets | extract_driver_versions | tail -10)" > /tmp/novidio_vgpu_driver
+if [ ! -s /tmp/novidio_vgpu_driver ]; then
+  echo -n "$(modinfo nvidia | grep "version:" | awk '{print $2}' | head -1)" > /tmp/novidio_vgpu_driver
 fi
+}
 
 function update_version(){
 sed -i "/driver_version=/c\driver_version=${1}" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
