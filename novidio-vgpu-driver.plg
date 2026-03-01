@@ -1,12 +1,12 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "novidio-vgpu-driver">
-  <!ENTITY author    "novidio">
-  <!ENTITY version   "2026.03.01a">
+  <!ENTITY author    "CaffeineCM">
+  <!ENTITY version   "2026.03.01b">
   <!ENTITY launch    "Settings/novidio-vgpu-driver">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "81f02a0f7baa0f5d0f8d80aa63fb0eaf">
+  <!ENTITY md5       "a55f6136fff37baba275c44943afcfdc">
   <!ENTITY plugin    "/boot/config/plugins/&name;">
   <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
   <!ENTITY packages  "/boot/config/plugins/&name;/packages">
@@ -15,6 +15,9 @@
 <PLUGIN  name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.01b
+- Point plugin downloads to CaffeineCM repository
+
 ##2026.03.01
 - Update vGPU version list to 580.82.07
 - Fix version list fetch in download script
@@ -98,7 +101,7 @@ fi
 }
 
 get_version() {
-LAT_PACKAGE="$(wget -qO- https://api.github.com/repos/novidio/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "${PACKAGE}" | grep -E -v '\.md5$' | sort -V | tail -1)"
+LAT_PACKAGE="$(wget -qO- https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "${PACKAGE}" | grep -E -v '\.md5$' | sort -V | tail -1)"
 if [ -z "$LAT_PACKAGE" ]; then
   if [ -z "$CUR_V" ]; then
     echo
@@ -154,7 +157,7 @@ fi
 #Set variables
 KERNEL_V="$(uname -r)"
 PACKAGE="nvidia"
-DL_URL="https://github.com/novidio/unraid-novidio-vgpu-driver/releases/download/${KERNEL_V}"
+DL_URL="https://github.com/CaffeineCM/unraid-novidio-vgpu-driver/releases/download/${KERNEL_V}"
 
 if [ ! -d "&packages;/${KERNEL_V%%-*}" ]; then
   mkdir -p "&packages;/${KERNEL_V%%-*}"

@@ -3,9 +3,9 @@
 # Define Variables
 export KERNEL_V="$(uname -r)"
 export PACKAGE="nvidia"
-export DRIVER_AVAIL="$(wget -qO- https://api.github.com/repos/novidio/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep -E ${PACKAGE} | grep -E -v '\.md5$' | sort -V)"
-export BRANCHES="$(wget -qO- https://raw.githubusercontent.com/novidio/unraid-novidio-vgpu-driver/master/novidio_vgpu_versions | grep -v "UPDATED")"
-export DL_URL="https://github.com/novidio/unraid-novidio-vgpu-driver/releases/download/${KERNEL_V}"
+export DRIVER_AVAIL="$(wget -qO- https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep -E ${PACKAGE} | grep -E -v '\.md5$' | sort -V)"
+export BRANCHES="$(wget -qO- https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio_vgpu_versions | grep -v "UPDATED")"
+export DL_URL="https://github.com/CaffeineCM/unraid-novidio-vgpu-driver/releases/download/${KERNEL_V}"
 export SET_DRV_V="$(grep "driver_version" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg" | cut -d '=' -f2)"
 export CUR_V="$(ls -p /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*} 2>/dev/null | grep -E -v '\.md5' | sort -V | tail -1)"
 

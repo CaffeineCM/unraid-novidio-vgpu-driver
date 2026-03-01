@@ -33,7 +33,7 @@ fi
 if [ "${SET_DRV_V}" != "latest" ]; then
   exit 0
 elif [ "${SET_DRV_V}" == "latest" ]; then
-  LAT_PACKAGE="$(wget -qO- https://api.github.com/repos/novidio/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "$PACKAGE" | grep -E -v '\.md5$' | sort -V | tail -1)"
+  LAT_PACKAGE="$(wget -qO- https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V} | jq -r '.assets[].name' | grep "$PACKAGE" | grep -E -v '\.md5$' | sort -V | tail -1)"
   if [ -z ${LAT_PACKAGE} ]; then
     logger "novidio-vgpu-driver-Plugin: Automatic update check failed, can't get latest version number!"
     exit 1

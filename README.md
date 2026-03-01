@@ -9,6 +9,9 @@ As of 6.12.54 we are no longer using the merged driver. This means the driver wi
 
 - This is the repository for the Unraid vGPU Driver plugin.
 
+- Install plugin (Plugins -> Install Plugin):
+- https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg
+
 - 1.Install 'user scripts' in the unraid app store
 - 2.Create a new run script. (Name customization)
 - 3.Newly created script content
