@@ -260,18 +260,32 @@ else
 fi
 
 ### RESTART NVIDIA PROCESS
-if pgrep -x nvidia-vgpud > /dev/null
-then
+if command -v nvidia-vgpud >/dev/null 2>&1; then
+  if pgrep -x nvidia-vgpud > /dev/null; then
     nvidia-vgpud stop
+  fi
+else
+  echo "nvidia-vgpud not found, skipping restart."
 fi
-if pgrep -x nvidia-vgpu-mgr > /dev/null
-then
+
+if command -v nvidia-vgpu-mgr >/dev/null 2>&1; then
+  if pgrep -x nvidia-vgpu-mgr > /dev/null; then
     nvidia-vgpu-mgr stop
     killall nvidia-vgpu-mgr
+  fi
+else
+  echo "nvidia-vgpu-mgr not found, skipping restart."
 fi
+
 sleep 3
-LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpud 
-LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpu-mgr
+if command -v nvidia-vgpud >/dev/null 2>&1; then
+  LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpud
+fi
+if command -v nvidia-vgpu-mgr >/dev/null 2>&1; then
+  LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so nvidia-vgpu-mgr
+fi
+
+exit 0
 
 </INLINE>
 </FILE>
