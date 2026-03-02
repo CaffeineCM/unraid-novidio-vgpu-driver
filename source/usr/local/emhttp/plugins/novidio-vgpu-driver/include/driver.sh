@@ -65,23 +65,36 @@ ensure_package_dir() {
 
 download_package() {
   local package_name="${1}"
+  local package_path
+  local md5_path
+  local tmp_package
+  local tmp_md5
 
   ensure_package_dir
+  package_path="${PACKAGE_DIR}/${package_name}"
+  md5_path="${PACKAGE_DIR}/${package_name}.md5"
+  tmp_package="${package_path}.part"
+  tmp_md5="${md5_path}.part"
 
-  if wget -q -nc --show-progress --progress=bar:force:noscroll -O "${PACKAGE_DIR}/${package_name}" "${DL_URL}/${package_name}"; then
-    wget -q -nc --show-progress --progress=bar:force:noscroll -O "${PACKAGE_DIR}/${package_name}.md5" "${DL_URL}/${package_name}.md5"
-    if [ "$(md5sum "${PACKAGE_DIR}/${package_name}" | awk '{print $1}')" != "$(awk '{print $1}' "${PACKAGE_DIR}/${package_name}.md5")" ]; then
+  rm -f "${package_path}" "${md5_path}" "${tmp_package}" "${tmp_md5}"
+
+  if wget -q --show-progress --progress=bar:force:noscroll -O "${tmp_package}" "${DL_URL}/${package_name}"; then
+    wget -q --show-progress --progress=bar:force:noscroll -O "${tmp_md5}" "${DL_URL}/${package_name}.md5"
+    if [ "$(md5sum "${tmp_package}" | awk '{print $1}')" != "$(awk '{print $1}' "${tmp_md5}")" ]; then
       echo
       echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
       echo "--------------------------------CHECKSUM ERROR!---------------------------------"
-      rm -f "${PACKAGE_DIR}/${package_name}" "${PACKAGE_DIR}/${package_name}.md5"
+      rm -f "${tmp_package}" "${tmp_md5}"
       exit 1
     fi
+    mv -f "${tmp_package}" "${package_path}"
+    mv -f "${tmp_md5}" "${md5_path}"
     echo
     echo "-----------Successfully downloaded Nvidia vGPU Driver Package v$(package_version "${package_name}")-----------"
   else
     echo
     echo "---------------Can't download Nvidia vGPU Driver Package v$(package_version "${package_name}")----------------"
+    rm -f "${tmp_package}" "${tmp_md5}"
     exit 1
   fi
 }

@@ -211,7 +211,6 @@ function setFormatButton() {
                             <option value="<?=$version?>" <?=$selected_v === $version ? 'selected' : ''?>><?=$version?></option>
                         <? endforeach; ?>
                     </select>
-                    <input type="button" value="Hot Upgrade" onclick="return driverAction(this.form,'hot_upgrade','Hot Upgrade Driver');">
                     <input type="button" value="Download Only" onclick="return driverAction(this.form,'download_only','Download Driver');">
                     <input type="button" value="Download + Reboot" onclick="return driverAction(this.form,'download_reboot','Download And Reboot');">
                 </td>
@@ -223,7 +222,7 @@ function setFormatButton() {
             <tr>
                 <td></td>
                 <td colspan="5" style="color:#666;">
-                    `Hot Upgrade` is experimental. `Download Only` prepares a driver for later. `Download + Reboot` downloads now and reboots to apply the prepared driver.
+                    `Download Only` prepares a driver for later. `Download + Reboot` downloads now and reboots to apply the prepared driver.
                 </td>
             </tr>
         </table>

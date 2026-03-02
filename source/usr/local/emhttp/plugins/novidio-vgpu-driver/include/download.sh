@@ -4,6 +4,33 @@ package_version() {
 echo "${1}" | sed -nE 's/^nvidia-([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
 }
 
+download_with_verify() {
+local package_name="${1}"
+local package_path="/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${package_name}"
+local md5_path="${package_path}.md5"
+local tmp_package="${package_path}.part"
+local tmp_md5="${md5_path}.part"
+
+rm -f "${package_path}" "${md5_path}" "${tmp_package}" "${tmp_md5}"
+
+if wget -q --show-progress --progress=bar:force:noscroll -O "${tmp_package}" "${DL_URL}/${package_name}" ; then
+  wget -q --show-progress --progress=bar:force:noscroll -O "${tmp_md5}" "${DL_URL}/${package_name}.md5"
+  if [ "$(md5sum "${tmp_package}" | awk '{print $1}')" != "$(awk '{print $1}' "${tmp_md5}")" ]; then
+    echo
+    echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
+    echo "--------------------------------CHECKSUM ERROR!---------------------------------"
+    rm -f "${tmp_package}" "${tmp_md5}"
+    exit 1
+  fi
+  mv -f "${tmp_package}" "${package_path}"
+  mv -f "${tmp_md5}" "${md5_path}"
+  return 0
+fi
+
+rm -f "${tmp_package}" "${tmp_md5}"
+return 1
+}
+
 # Define Variables
 export KERNEL_V="$(uname -r)"
 export PACKAGE="nvidia"
@@ -15,15 +42,7 @@ export CUR_V="$(ls -p /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL
 
 #Download Nvidia vGPU Driver Package
 download() {
-if wget -q -nc --show-progress --progress=bar:force:noscroll -O "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}" "${DL_URL}/${LAT_PACKAGE}" ; then
-  wget -q -nc --show-progress --progress=bar:force:noscroll -O "/boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5" "${DL_URL}/${LAT_PACKAGE}.md5"
-  if [ "$(md5sum /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE} | awk '{print $1}')" != "$(cat /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}.md5 | awk '{print $1}')" ]; then
-    echo
-    echo "-----ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR - ERROR------"
-    echo "--------------------------------CHECKSUM ERROR!---------------------------------"
-    rm -rf /boot/config/plugins/novidio-vgpu-driver/packages/${KERNEL_V%%-*}/${LAT_PACKAGE}
-    exit 1
-  fi
+if download_with_verify "${LAT_PACKAGE}" ; then
   echo
   echo "-----------Successfully downloaded Nvidia vGPU Driver Package v$(package_version "$LAT_PACKAGE")-----------"
 else
