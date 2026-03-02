@@ -8,6 +8,21 @@ PACKAGE_PREFIX="nvidia"
 REPO="CaffeineCM/unraid-novidio-vgpu-driver"
 DL_URL="https://github.com/${REPO}/releases/download/${KERNEL_V}"
 VGPU_PRELOAD="/usr/local/lib/libvgpu_unlock_rs.so"
+LOG_FILE="/boot/logs/novidio-vgpu-driver.log"
+
+setup_logging() {
+  local action="${1}"
+
+  case "${action}" in
+    download_only|import_upload|boot_apply_selected|hot_upgrade|download_reboot)
+      mkdir -p "$(dirname "${LOG_FILE}")"
+      touch "${LOG_FILE}"
+      exec > >(tee -a "${LOG_FILE}") 2>&1
+      echo
+      echo "===== $(date '+%Y-%m-%d %H:%M:%S') ${action} ====="
+      ;;
+  esac
+}
 
 package_version() {
   echo "${1}" | sed -nE 's/^nvidia-([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
@@ -19,6 +34,45 @@ selected_driver_version() {
 
 current_installed_version() {
   modinfo nvidia 2>/dev/null | awk '/^version:/ {print $2; exit}'
+}
+
+relink_library_dir() {
+  local lib_dir="${1}"
+  local target_version="${2}"
+  local versioned
+  local base
+  local base_name
+
+  [ -d "${lib_dir}" ] || return 0
+
+  for versioned in "${lib_dir}"/*.so."${target_version}"; do
+    [ -e "${versioned}" ] || continue
+    base="${versioned%.${target_version}}"
+    base_name="$(basename "${base}")"
+
+    if [ -L "${base}.1" ] || [ -e "${base}.1" ]; then
+      ln -sfn "$(basename "${versioned}")" "${base}.1"
+    fi
+
+    if [ -L "${base}" ] || [ ! -e "${base}" ]; then
+      if [ -L "${base}.1" ] || [ -e "${base}.1" ]; then
+        ln -sfn "${base_name}.1" "${base}"
+      else
+        ln -sfn "$(basename "${versioned}")" "${base}"
+      fi
+    fi
+  done
+}
+
+relink_nvidia_userspace() {
+  local target_version
+
+  target_version="${1:-$(current_installed_version)}"
+  [ -n "${target_version}" ] || return 0
+
+  relink_library_dir /usr/lib64 "${target_version}"
+  relink_library_dir /usr/lib "${target_version}"
+  ldconfig >/dev/null 2>&1 || true
 }
 
 list_remote_packages() {
@@ -237,6 +291,7 @@ activate_driver() {
   local disable_xconfig
 
   disable_xconfig="$(grep '^disable_xconfig=' "${SETTINGS_FILE}" 2>/dev/null | cut -d '=' -f2)"
+  relink_nvidia_userspace
   if command -v Xorg >/dev/null 2>&1 && [ "${disable_xconfig}" != "true" ]; then
     nvidia-xconfig --output-xconfig=/etc/X11/xorg.conf --silent 2>/dev/null || true
   fi
@@ -251,7 +306,10 @@ activate_driver() {
 install_local_package() {
   local package_name="${1}"
 
-  /sbin/upgradepkg --install-new --reinstall "${PACKAGE_DIR}/${package_name}" >/dev/null
+  if ! /sbin/upgradepkg --install-new --reinstall "${PACKAGE_DIR}/${package_name}" >/dev/null; then
+    echo "Failed to install Nvidia vGPU Driver Package v$(package_version "${package_name}")"
+    return 1
+  fi
   activate_driver
   echo
   echo "----------------Installed Nvidia vGPU Driver Package v$(package_version "${package_name}")----------------"
@@ -280,13 +338,19 @@ boot_apply_selected() {
   installed_version="$(current_installed_version)"
 
   if [ "${installed_version}" = "${target_version}" ]; then
+    relink_nvidia_userspace "${target_version}"
     exit 0
   fi
 
   echo "Applying prepared Nvidia vGPU Driver Package v${target_version} during boot..."
   stop_vgpu_services
-  unload_nvidia_modules >/dev/null 2>&1 || true
-  install_local_package "${package_name}"
+  if ! unload_nvidia_modules >/dev/null 2>&1; then
+    echo "Failed to unload existing Nvidia modules during boot apply."
+    exit 1
+  fi
+  if ! install_local_package "${package_name}"; then
+    exit 1
+  fi
 }
 
 hot_upgrade_selected() {
@@ -334,7 +398,12 @@ download_reboot_selected() {
   nohup bash -c 'sleep 3; /sbin/reboot' >/dev/null 2>&1 &
 }
 
+setup_logging "${1}"
+
 case "${1}" in
+  log_path)
+    echo "${LOG_FILE}"
+    ;;
   download_only)
     download_selected "${2}"
     ;;

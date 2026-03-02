@@ -6,6 +6,7 @@
 #########################################################
 
 $plugin = "novidio-vgpu-driver";
+$driverLog = "/boot/logs/novidio-vgpu-driver.log";
 $docroot = $docroot ?: $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 $translations = file_exists("$docroot/webGui/include/Translations.php");
 if ($translations) {
@@ -35,7 +36,9 @@ function jsonResponse($payload, $statusCode = 200) {
   exit;
 }
 
-switch ($_POST['action']) {
+$action = $_REQUEST['action'] ?? null;
+
+switch ($action) {
   case 'edit':
     $filename = urldecode($_POST['filename']);
     echo json_encode(readCFGfile($filename));
@@ -100,5 +103,21 @@ switch ($_POST['action']) {
       'message' => trim(implode("\n", $output)) ?: 'Driver uploaded successfully.',
     ]);
     break;
+  case 'get_driver_log':
+    if (is_file($driverLog)) {
+      echo file_get_contents($driverLog);
+    } else {
+      echo "No driver log found yet.";
+    }
+    break;
+  case 'download_driver_log':
+    header('Content-Type: text/plain');
+    header('Content-Disposition: attachment; filename="novidio-vgpu-driver.log"');
+    if (is_file($driverLog)) {
+      readfile($driverLog);
+    } else {
+      echo "No driver log found yet.\n";
+    }
+    exit;
 }
 ?>

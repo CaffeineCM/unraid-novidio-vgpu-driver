@@ -103,6 +103,24 @@ function uploadDriver(form) {
 
     return false;
 }
+
+function viewDriverLog() {
+    $.get(caURL, {action: "get_driver_log"}, function(data) {
+        $("#driver_log_contents").text(data || "No driver log found yet.");
+        $("#driver_log_modal").show();
+    });
+    return false;
+}
+
+function downloadDriverLog() {
+    window.location = caURL + "?action=download_driver_log";
+    return false;
+}
+
+function closeDriverLog() {
+    $("#driver_log_modal").hide();
+    return false;
+}
 </script>
 
 <?
@@ -285,8 +303,26 @@ function setFormatButton() {
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td><b><font size="+1">Driver Log</font></b></td>
+                <td colspan="5">
+                    <input type="button" value="View Log" onclick="return viewDriverLog();">
+                    <input type="button" value="Download Log" onclick="return downloadDriverLog();">
+                    <div style="margin-top:6px;color:#666;">
+                        Includes download, upload validation, and boot-time driver apply output.
+                    </div>
+                </td>
+            </tr>
         </table>
     </form>
+</div>
+
+<div id="driver_log_modal" style="display:none; position:fixed; top:8%; left:10%; width:80%; height:80%; background:#fff; border:1px solid #999; z-index:2000; box-shadow:0 4px 18px rgba(0,0,0,0.25); padding:12px;">
+    <div style="margin-bottom:10px;">
+        <b>Driver Log</b>
+        <input type="button" value="Close" style="float:right;" onclick="return closeDriverLog();">
+    </div>
+    <pre id="driver_log_contents" style="height:90%; overflow:auto; background:#f7f7f7; border:1px solid #ddd; padding:10px; white-space:pre-wrap;"></pre>
 </div>
 
 <div style="width: 50%; float:left">
