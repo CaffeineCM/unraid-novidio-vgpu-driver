@@ -62,7 +62,88 @@ echo -n "$(nvidia-smi --query-gpu=index,name,gpu_bus_id,uuid --format=csv,nohead
 }
 
 function get_mdev_list(){
-echo -n "$(mdevctl list)"
+local device_path
+local uuid
+local parent_path
+local parent_bdf
+local type_path
+local type_name
+local found=0
+
+shopt -s nullglob
+
+for device_path in /sys/bus/mdev/devices/*; do
+  [ -e "${device_path}" ] || continue
+  uuid="$(basename "${device_path}")"
+  parent_bdf=""
+  type_name=""
+
+  if [ -L "${device_path}/parent" ]; then
+    parent_path="$(readlink -f "${device_path}/parent")"
+    parent_bdf="$(basename "${parent_path}")"
+  fi
+
+  if [ -L "${device_path}/mdev_type" ]; then
+    type_path="$(readlink -f "${device_path}/mdev_type")"
+    if [ -r "${type_path}/name" ]; then
+      type_name="$(cat "${type_path}/name")"
+    else
+      type_name="$(basename "${type_path}")"
+    fi
+  fi
+
+  if [ -n "${parent_bdf}" ] && [ -n "${type_name}" ]; then
+    echo "${uuid} (${parent_bdf}, ${type_name})"
+  elif [ -n "${type_name}" ]; then
+    echo "${uuid} (${type_name})"
+  else
+    echo "${uuid}"
+  fi
+  found=1
+done
+
+if [ "${found}" -eq 0 ]; then
+  echo -n ""
+fi
+}
+
+function get_mdev_types(){
+local bus_path
+local gpu_bdf
+local type_path
+local type_id
+local type_name
+local available
+local found=0
+
+shopt -s nullglob
+
+for bus_path in /sys/class/mdev_bus/*; do
+  [ -d "${bus_path}/mdev_supported_types" ] || continue
+  gpu_bdf="$(basename "$(readlink -f "${bus_path}")")"
+
+  for type_path in "${bus_path}"/mdev_supported_types/*; do
+    [ -d "${type_path}" ] || continue
+    type_id="$(basename "${type_path}")"
+    type_name="${type_id}"
+    available="?"
+
+    if [ -r "${type_path}/name" ]; then
+      type_name="$(cat "${type_path}/name")"
+    fi
+
+    if [ -r "${type_path}/available_instances" ]; then
+      available="$(cat "${type_path}/available_instances")"
+    fi
+
+    echo "${gpu_bdf}: ${type_id} - ${type_name} (available: ${available})"
+    found=1
+  done
+done
+
+if [ "${found}" -eq 0 ]; then
+  echo -n ""
+fi
 }
 
 function get_flash_id(){

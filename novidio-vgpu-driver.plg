@@ -1,7 +1,10 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02j" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02k" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.02k
+- Show mdev devices and supported types from sysfs instead of requiring mdevctl
+
 ##2026.03.02j
 - Fix driver version dropdown population on Unraid by replacing non-portable local package discovery
 - Preserve selected and installed versions in the dropdown when remote release lookup fails
@@ -124,6 +127,16 @@ This plugin will install the nvidia vgpu driver, which will reuse your graphics 
 </INLINE>
 </FILE>
 
+<FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/source/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh</URL>
+<MD5>3736b453261374a6475e591a06976087</MD5>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/novidio-vgpu-driver.page">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/source/usr/local/emhttp/plugins/novidio-vgpu-driver/novidio-vgpu-driver.page</URL>
+<MD5>105cdc52e891d98b08275a4991568a84</MD5>
+</FILE>
+
 <FILE Run="/bin/bash">
 <INLINE>
 KERNEL_V="$(uname -r)"
@@ -167,6 +180,8 @@ fi
 echo "unlock = false" > /etc/vgpu_unlock/config.toml
 
 env LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so >/dev/null
+
+chmod 0755 /usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh
 
 
 #Add update check entry if not exists

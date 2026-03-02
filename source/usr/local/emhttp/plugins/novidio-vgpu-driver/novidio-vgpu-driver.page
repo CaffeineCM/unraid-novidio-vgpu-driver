@@ -18,8 +18,11 @@ $installed_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/in
 //Get prepared driver version
 $prepared_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_prepared_version'));
 
-//Get mdevctl list
+//Get active mdev devices from sysfs
 $mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
+
+//Get available mdev types from sysfs
+$mdev_types = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_types');
 
 //Read driver versions from '/tmp/novidio_vgpu_driver'
 error_reporting(E_ALL);
@@ -343,11 +346,11 @@ function setFormatButton() {
         </tr>
 
         <tr>
-            <td>Mdevctl List:</td>
+            <td>mdev Devices:</td>
 				<? if ($mdev_list !== ''): ?>
-					<td style="color:green"><b><?=`mdevctl list | sed 's/$/<br>/'`?></b></td>				
+					<td style="color:green"><b><?=nl2br(htmlspecialchars(trim($mdev_list)))?></b></td>
 				<? else: ?>
-					<td style="color:red">Cannot get MDEV LIST !</td>
+					<td style="color:#666">No mdev devices defined.</td>
 				<? endif; ?>
         </tr>
     </table>
@@ -359,14 +362,18 @@ function setFormatButton() {
     </div>
     <table class="settings" style="margin-top: 0;">
         <tr>
-            <b><font size="+1">Mdevctl types:</font></b>
+            <b><font size="+1">mdev Types:</font></b>
         </tr>
         <tr>
+			<? if ($mdev_types !== ''): ?>
 			<td style="color:green">
                 <div>
-                    <b><?=`mdevctl types | sed 's/^[ \t]*//' | sed 's/$/<br>/'`?></b>
+                    <b><?=nl2br(htmlspecialchars(trim($mdev_types)))?></b>
                 </div>
             </td>
+			<? else: ?>
+			<td style="color:red">No mdev types detected.</td>
+			<? endif; ?>
 		</tr>
 	</table>
 </div>
