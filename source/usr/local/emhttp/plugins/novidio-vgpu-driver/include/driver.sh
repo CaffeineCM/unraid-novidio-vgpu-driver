@@ -84,7 +84,14 @@ list_remote_packages() {
 }
 
 list_local_packages() {
-  find "${PACKAGE_DIR}" -maxdepth 1 -type f -name "${PACKAGE_PREFIX}-*.txz" -printf '%f\n' 2>/dev/null | sort -V
+  local package_path
+
+  [ -d "${PACKAGE_DIR}" ] || return 0
+
+  for package_path in "${PACKAGE_DIR}"/${PACKAGE_PREFIX}-*.txz; do
+    [ -f "${package_path}" ] || continue
+    basename "${package_path}"
+  done | sort -V
 }
 
 list_local_versions() {
