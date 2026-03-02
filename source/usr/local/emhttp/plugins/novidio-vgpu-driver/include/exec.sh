@@ -13,7 +13,10 @@ sed -nE 's/^nvidia[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' | sort -Vu
 }
 
 function update(){
-echo -n "$(fetch_driver_assets | extract_driver_versions | tail -10)" > /tmp/novidio_vgpu_driver
+{
+fetch_driver_assets | extract_driver_versions
+${DRIVER_HELPER} list_local_versions 2>/dev/null
+} | sed '/^$/d' | sort -Vu > /tmp/novidio_vgpu_driver
 if [ ! -s /tmp/novidio_vgpu_driver ]; then
   echo -n "$(modinfo nvidia | grep "version:" | awk '{print $2}' | head -1)" > /tmp/novidio_vgpu_driver
 fi

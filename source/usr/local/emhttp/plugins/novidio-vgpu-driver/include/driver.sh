@@ -33,6 +33,12 @@ list_local_packages() {
   find "${PACKAGE_DIR}" -maxdepth 1 -type f -name "${PACKAGE_PREFIX}-*.txz" -printf '%f\n' 2>/dev/null | sort -V
 }
 
+list_local_versions() {
+  list_local_packages | while read -r package_name; do
+    package_version "${package_name}"
+  done | sed '/^$/d' | sort -Vu
+}
+
 resolve_remote_target_package() {
   local requested="${1:-$(selected_driver_version)}"
   if [ "${requested}" = "latest" ]; then
@@ -61,6 +67,73 @@ set_selected_driver_version() {
 
 ensure_package_dir() {
   mkdir -p "${PACKAGE_DIR}"
+}
+
+validate_package_name() {
+  local package_name="${1}"
+
+  if ! echo "${package_name}" | grep -Eq "^${PACKAGE_PREFIX}-[0-9]+\.[0-9]+\.[0-9]+-${KERNEL_V}-[0-9]+\.txz$"; then
+    echo "Upload rejected: filename must match ${PACKAGE_PREFIX}-<version>-${KERNEL_V}-<build>.txz"
+    return 1
+  fi
+}
+
+validate_package_contents() {
+  local package_path="${1}"
+  local contents
+
+  if ! contents="$(tar -tf "${package_path}" 2>/dev/null)"; then
+    echo "Upload rejected: unable to read the txz archive."
+    return 1
+  fi
+
+  if ! echo "${contents}" | grep -Eq '(^|/)(usr/bin/nvidia-smi)$'; then
+    echo "Upload rejected: package is missing usr/bin/nvidia-smi"
+    return 1
+  fi
+
+  if ! echo "${contents}" | grep -Eq '(^|/)(usr/bin/nvidia-vgpu-mgr)$'; then
+    echo "Upload rejected: package is missing usr/bin/nvidia-vgpu-mgr"
+    return 1
+  fi
+
+  if ! echo "${contents}" | grep -Eq '(^|/)(usr/bin/nvidia-vgpud)$'; then
+    echo "Upload rejected: package is missing usr/bin/nvidia-vgpud"
+    return 1
+  fi
+
+  if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia\\.ko$"; then
+    echo "Upload rejected: package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia.ko"
+    return 1
+  fi
+
+  if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-vgpu-vfio\\.ko$"; then
+    echo "Upload rejected: package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-vgpu-vfio.ko"
+    return 1
+  fi
+}
+
+import_uploaded_package() {
+  local upload_path="${1}"
+  local original_name="${2}"
+  local target_path
+  local version
+
+  if [ ! -f "${upload_path}" ]; then
+    echo "Upload rejected: temporary upload file not found."
+    return 1
+  fi
+
+  validate_package_name "${original_name}" || return 1
+  validate_package_contents "${upload_path}" || return 1
+
+  ensure_package_dir
+  target_path="${PACKAGE_DIR}/${original_name}"
+  rm -f "${target_path}" "${target_path}.md5"
+  mv -f "${upload_path}" "${target_path}"
+  md5sum "${target_path}" | awk '{print $1}' > "${target_path}.md5"
+  version="$(package_version "${original_name}")"
+  echo "Imported Nvidia vGPU Driver Package v${version}"
 }
 
 download_package() {
@@ -264,6 +337,12 @@ download_reboot_selected() {
 case "${1}" in
   download_only)
     download_selected "${2}"
+    ;;
+  import_upload)
+    import_uploaded_package "${2}" "${3}"
+    ;;
+  list_local_versions)
+    list_local_versions
     ;;
   hot_upgrade)
     hot_upgrade_selected "${2}"

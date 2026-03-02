@@ -28,6 +28,13 @@ function readCFGfile($filename) {
   return $data;
 }
 
+function jsonResponse($payload, $statusCode = 200) {
+  http_response_code($statusCode);
+  header('Content-Type: application/json');
+  echo json_encode($payload);
+  exit;
+}
+
 switch ($_POST['action']) {
   case 'edit':
     $filename = urldecode($_POST['filename']);
@@ -50,6 +57,48 @@ switch ($_POST['action']) {
     } else {
       echo _("No Backup File Found");
     }
+    break;
+  case 'upload_driver':
+    if (!isset($_FILES['driver_package'])) {
+      jsonResponse(['success' => false, 'message' => 'No upload payload received.'], 400);
+    }
+
+    $upload = $_FILES['driver_package'];
+    if (($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+      jsonResponse(['success' => false, 'message' => 'Upload failed before validation.'], 400);
+    }
+
+    $originalName = basename($upload['name']);
+    $tmpUpload = tempnam(sys_get_temp_dir(), 'novidio-upload-');
+    if ($tmpUpload === false) {
+      jsonResponse(['success' => false, 'message' => 'Unable to allocate temporary upload storage.'], 500);
+    }
+
+    if (!move_uploaded_file($upload['tmp_name'], $tmpUpload)) {
+      @unlink($tmpUpload);
+      jsonResponse(['success' => false, 'message' => 'Unable to persist the uploaded file.'], 500);
+    }
+
+    $driverHelper = '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/driver.sh';
+    $command = escapeshellcmd($driverHelper).' import_upload '.escapeshellarg($tmpUpload).' '.escapeshellarg($originalName).' 2>&1';
+    $output = [];
+    $status = 0;
+    exec($command, $output, $status);
+    @unlink($tmpUpload);
+
+    if ($status !== 0) {
+      jsonResponse([
+        'success' => false,
+        'message' => trim(implode("\n", $output)) ?: 'Upload validation failed.',
+      ], 400);
+    }
+
+    shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh update');
+
+    jsonResponse([
+      'success' => true,
+      'message' => trim(implode("\n", $output)) ?: 'Driver uploaded successfully.',
+    ]);
     break;
 }
 ?>

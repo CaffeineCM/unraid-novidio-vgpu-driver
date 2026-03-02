@@ -1,7 +1,14 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02e" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02g" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
+##2026.03.02g
+- Add validated local driver package upload support in the web UI
+- Merge uploaded local packages into the selectable driver version list
+
+##2026.03.02f
+- Remove the download-and-reboot UI action and keep reboot as a manual step
+
 ##2026.03.02e
 - Retry driver downloads cleanly by replacing stale partial files
 - Hide the hot-upgrade button and keep only the reboot-safe actions in the UI
@@ -89,13 +96,13 @@
 
 <FILE Run="/bin/bash">
 <INLINE>
-rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.02e')
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.02g')
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.02e.txz" Run="upgradepkg --install-new --reinstall">
-<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.02e.txz</URL>
-<MD5>4f13ee14614bd2561355c8adb90413bf</MD5>
+<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.02g.txz" Run="upgradepkg --install-new --reinstall">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.02g.txz</URL>
+<MD5>17dc18ae8d96493b12eb18f4dfa078fa</MD5>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
@@ -198,7 +205,7 @@ echo "----------------------------------------"
 echo "---Uninstalling Nvidia vGPU driver package---"
 echo "----------------------------------------"
 # Remove plugin related files
-removepkg novidio-vgpu-driver-2026.03.02e;
+removepkg novidio-vgpu-driver-2026.03.02g;
 crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &amp;&gt;/dev/null 2&gt;&amp;1'  | crontab -
 rm -rf /usr/local/emhttp/plugins/novidio-vgpu-driver;
 rm -rf /boot/config/plugins/novidio-vgpu-driver;

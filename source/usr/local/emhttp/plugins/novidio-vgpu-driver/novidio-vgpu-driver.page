@@ -52,6 +52,57 @@ function driverAction(form, action, title) {
     openBox("/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh&arg1=run_action&arg2="+actionName+"&arg3="+version,title,700,900,true);
     return false;
 }
+
+function uploadDriver(form) {
+    var fileInput = form.driver_package;
+    var status = $("#upload_status");
+    var fileName = fileInput.value || "";
+
+    if (!fileName) {
+        status.css("color", "red").text("Select a driver package first.");
+        return false;
+    }
+
+    if (!fileName.match(/\.txz$/i)) {
+        status.css("color", "red").text("Only .txz driver packages are accepted.");
+        return false;
+    }
+
+    var formData = new FormData();
+    formData.append("action", "upload_driver");
+    formData.append("driver_package", fileInput.files[0]);
+
+    status.css("color", "#666").text("Uploading and validating package...");
+
+    $.ajax({
+        url: caURL,
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            var result = response;
+            if (typeof response === "string") {
+                result = JSON.parse(response);
+            }
+            if (result.success) {
+                status.css("color", "green").text(result.message + " Refreshing versions...");
+                window.setTimeout(function() { window.location.reload(); }, 1200);
+            } else {
+                status.css("color", "red").text(result.message || "Upload failed.");
+            }
+        },
+        error: function(xhr) {
+            var result = {};
+            try {
+                result = JSON.parse(xhr.responseText);
+            } catch (err) {}
+            status.css("color", "red").text(result.message || "Upload failed.");
+        }
+    });
+
+    return false;
+}
 </script>
 
 <?
@@ -200,7 +251,7 @@ function setFormatButton() {
 <h1 style="text-align: center;"><a href="https://forums.unraid.net/" target="_blank" rel="noopener"><span style="color: green;">Nvidia vGPU Driver Package</span></a></h1>
 
 <div style="width: 100%; clear: both; margin-bottom: 18px;">
-    <form method="POST" onsubmit="return false;">
+    <form method="POST" onsubmit="return false;" enctype="multipart/form-data">
         <table class="settings" style="margin-top: 0; width: 100%;">
             <tr>
                 <td><b><font size="+1">Driver Version</font></b></td>
@@ -212,7 +263,6 @@ function setFormatButton() {
                         <? endforeach; ?>
                     </select>
                     <input type="button" value="Download Only" onclick="return driverAction(this.form,'download_only','Download Driver');">
-                    <input type="button" value="Download + Reboot" onclick="return driverAction(this.form,'download_reboot','Download And Reboot');">
                 </td>
                 <td>Selected: <span style="color:green"><b><?=htmlspecialchars($selected_v ?: 'latest')?></b></span></td>
                 <td>Installed: <span style="color:green"><b><?=htmlspecialchars($installed_v ?: 'unknown')?></b></span></td>
@@ -222,7 +272,17 @@ function setFormatButton() {
             <tr>
                 <td></td>
                 <td colspan="5" style="color:#666;">
-                    `Download Only` prepares a driver for later. `Download + Reboot` downloads now and reboots to apply the prepared driver.
+                    `Download Only` prepares a driver for later. Reboot manually when you are ready to apply the prepared driver.
+                </td>
+            </tr>
+            <tr>
+                <td><b><font size="+1">Upload Driver</font></b></td>
+                <td colspan="5">
+                    <input type="file" name="driver_package" accept=".txz">
+                    <input type="button" value="Upload Package" onclick="return uploadDriver(this.form);">
+                    <div id="upload_status" style="margin-top:6px;color:#666;">
+                        Accepts `nvidia-&lt;version&gt;-<?=htmlspecialchars(`uname -r`)?>-&lt;build&gt;.txz` and validates key vGPU files before import.
+                    </div>
                 </td>
             </tr>
         </table>
