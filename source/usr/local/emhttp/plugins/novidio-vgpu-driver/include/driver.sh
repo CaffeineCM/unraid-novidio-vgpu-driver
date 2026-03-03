@@ -28,12 +28,97 @@ package_version() {
   echo "${1}" | sed -nE 's/^nvidia-([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
 }
 
+package_variant() {
+  if echo "${1}" | grep -Eq '^nvidia-[0-9]+\.[0-9]+\.[0-9]+-merged-.*\.txz$'; then
+    echo "merged"
+  else
+    echo "kvm"
+  fi
+}
+
+package_selector() {
+  local version
+
+  version="$(package_version "${1}")"
+  [ -n "${version}" ] || return 0
+
+  if [ "$(package_variant "${1}")" = "merged" ]; then
+    echo "${version}-merged"
+  else
+    echo "${version}"
+  fi
+}
+
+selector_version() {
+  echo "${1}" | sed 's/-merged$//'
+}
+
+selector_variant() {
+  if echo "${1}" | grep -Eq -- '-merged$'; then
+    echo "merged"
+  else
+    echo "kvm"
+  fi
+}
+
+selector_label() {
+  local selector="${1}"
+  local version
+
+  case "${selector}" in
+    latest)
+      echo "latest"
+      return 0
+      ;;
+    "")
+      return 0
+      ;;
+  esac
+
+  version="$(selector_version "${selector}")"
+  if [ "$(selector_variant "${selector}")" = "merged" ]; then
+    echo "${version} (merged)"
+  else
+    echo "${version} (kvm)"
+  fi
+}
+
+package_label() {
+  selector_label "$(package_selector "${1}")"
+}
+
+sort_packages() {
+  while read -r package_name; do
+    [ -n "${package_name}" ] || continue
+    printf '%s\t%s\t%s\n' \
+      "$(package_version "${package_name}")" \
+      "$( [ "$(package_variant "${package_name}")" = "merged" ] && echo 1 || echo 0 )" \
+      "${package_name}"
+  done | sort -t "$(printf '\t')" -k1,1V -k2,2n | cut -f3
+}
+
 selected_driver_version() {
   grep '^driver_version=' "${SETTINGS_FILE}" 2>/dev/null | cut -d '=' -f2
 }
 
 current_installed_version() {
   modinfo nvidia 2>/dev/null | awk '/^version:/ {print $2; exit}'
+}
+
+current_installed_selector() {
+  local version
+
+  version="$(current_installed_version)"
+  [ -n "${version}" ] || return 0
+
+  if [ -e /usr/lib64/libcuda.so ] \
+    && modinfo nvidia_uvm >/dev/null 2>&1 \
+    && modinfo nvidia_modeset >/dev/null 2>&1 \
+    && modinfo nvidia_drm >/dev/null 2>&1; then
+    echo "${version}-merged"
+  else
+    echo "${version}"
+  fi
 }
 
 relink_library_dir() {
@@ -80,7 +165,7 @@ list_remote_packages() {
     | jq -r '.assets[].name' \
     | grep -E "^${PACKAGE_PREFIX}.*\.txz$" \
     | grep -E -v '\.md5$' \
-    | sort -V
+    | sort_packages
 }
 
 list_local_packages() {
@@ -91,31 +176,46 @@ list_local_packages() {
   for package_path in "${PACKAGE_DIR}"/${PACKAGE_PREFIX}-*.txz; do
     [ -f "${package_path}" ] || continue
     basename "${package_path}"
-  done | sort -V
+  done | sort_packages
 }
 
 list_local_versions() {
   list_local_packages | while read -r package_name; do
-    package_version "${package_name}"
+    package_selector "${package_name}"
   done | sed '/^$/d' | sort -Vu
+}
+
+resolve_package_by_request() {
+  local requested="${1}"
+  local package_list_command="${2}"
+  local selector_match
+
+  if [ "${requested}" = "latest" ]; then
+    ${package_list_command} | tail -1
+    return 0
+  fi
+
+  selector_match="$(${package_list_command} | while read -r package_name; do
+    [ "$(package_selector "${package_name}")" = "${requested}" ] && echo "${package_name}"
+  done | tail -1)"
+  if [ -n "${selector_match}" ]; then
+    echo "${selector_match}"
+    return 0
+  fi
+
+  ${package_list_command} | while read -r package_name; do
+    [ "$(package_version "${package_name}")" = "$(selector_version "${requested}")" ] && echo "${package_name}"
+  done | tail -1
 }
 
 resolve_remote_target_package() {
   local requested="${1:-$(selected_driver_version)}"
-  if [ "${requested}" = "latest" ]; then
-    list_remote_packages | tail -1
-  else
-    list_remote_packages | grep -F -- "${requested}" | tail -1
-  fi
+  resolve_package_by_request "${requested}" list_remote_packages
 }
 
 resolve_local_target_package() {
   local requested="${1:-$(selected_driver_version)}"
-  if [ "${requested}" = "latest" ]; then
-    list_local_packages | tail -1
-  else
-    list_local_packages | grep -F -- "${requested}" | tail -1
-  fi
+  resolve_package_by_request "${requested}" list_local_packages
 }
 
 set_selected_driver_version() {
@@ -133,20 +233,23 @@ ensure_package_dir() {
 validate_package_name() {
   local package_name="${1}"
 
-  if ! echo "${package_name}" | grep -Eq "^${PACKAGE_PREFIX}-[0-9]+\.[0-9]+\.[0-9]+-${KERNEL_V}-[0-9]+\.txz$"; then
-    echo "Upload rejected: filename must match ${PACKAGE_PREFIX}-<version>-${KERNEL_V}-<build>.txz"
+  if ! echo "${package_name}" | grep -Eq "^${PACKAGE_PREFIX}-[0-9]+\.[0-9]+\.[0-9]+(-merged)?-${KERNEL_V}-[0-9]+\.txz$"; then
+    echo "Upload rejected: filename must match ${PACKAGE_PREFIX}-<version>[-merged]-${KERNEL_V}-<build>.txz"
     return 1
   fi
 }
 
 validate_package_contents() {
   local package_path="${1}"
+  local package_name="${2}"
   local contents
 
   if ! contents="$(tar -tf "${package_path}" 2>/dev/null)"; then
     echo "Upload rejected: unable to read the txz archive."
     return 1
   fi
+
+  package_name="${package_name:-$(basename "${package_path}")}"
 
   if ! echo "${contents}" | grep -Eq '(^|/)(usr/bin/nvidia-smi)$'; then
     echo "Upload rejected: package is missing usr/bin/nvidia-smi"
@@ -172,29 +275,58 @@ validate_package_contents() {
     echo "Upload rejected: package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-vgpu-vfio.ko"
     return 1
   fi
+
+  if [ "$(package_variant "${package_name}")" = "merged" ]; then
+    if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-uvm\\.ko$"; then
+      echo "Upload rejected: merged package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-uvm.ko"
+      return 1
+    fi
+
+    if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-modeset\\.ko$"; then
+      echo "Upload rejected: merged package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-modeset.ko"
+      return 1
+    fi
+
+    if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-drm\\.ko$"; then
+      echo "Upload rejected: merged package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia-drm.ko"
+      return 1
+    fi
+
+    if ! echo "${contents}" | grep -Eq '(^|/)(usr/lib64/libcuda\.so(\.[^/]+)?)$'; then
+      echo "Upload rejected: merged package is missing usr/lib64/libcuda.so"
+      return 1
+    fi
+
+    if ! echo "${contents}" | grep -Eq '(^|/)(usr/lib64/libnvidia-encode\.so(\.[^/]+)?)$'; then
+      echo "Upload rejected: merged package is missing usr/lib64/libnvidia-encode.so"
+      return 1
+    fi
+
+    if ! echo "${contents}" | grep -Eq '(^|/)(usr/lib64/libnvcuvid\.so(\.[^/]+)?)$'; then
+      echo "Upload rejected: merged package is missing usr/lib64/libnvcuvid.so"
+      return 1
+    fi
+  fi
 }
 
 import_uploaded_package() {
   local upload_path="${1}"
   local original_name="${2}"
   local target_path
-  local version
-
   if [ ! -f "${upload_path}" ]; then
     echo "Upload rejected: temporary upload file not found."
     return 1
   fi
 
   validate_package_name "${original_name}" || return 1
-  validate_package_contents "${upload_path}" || return 1
+  validate_package_contents "${upload_path}" "${original_name}" || return 1
 
   ensure_package_dir
   target_path="${PACKAGE_DIR}/${original_name}"
   rm -f "${target_path}" "${target_path}.md5"
   mv -f "${upload_path}" "${target_path}"
   md5sum "${target_path}" | awk '{print $1}' > "${target_path}.md5"
-  version="$(package_version "${original_name}")"
-  echo "Imported Nvidia vGPU Driver Package v${version}"
+  echo "Imported Nvidia vGPU Driver Package $(package_label "${original_name}")"
 }
 
 download_package() {
@@ -224,10 +356,10 @@ download_package() {
     mv -f "${tmp_package}" "${package_path}"
     mv -f "${tmp_md5}" "${md5_path}"
     echo
-    echo "-----------Successfully downloaded Nvidia vGPU Driver Package v$(package_version "${package_name}")-----------"
+    echo "-----------Successfully downloaded Nvidia vGPU Driver Package $(package_label "${package_name}")-----------"
   else
     echo
-    echo "---------------Can't download Nvidia vGPU Driver Package v$(package_version "${package_name}")----------------"
+    echo "---------------Can't download Nvidia vGPU Driver Package $(package_label "${package_name}")----------------"
     rm -f "${tmp_package}" "${tmp_md5}"
     exit 1
   fi
@@ -254,11 +386,11 @@ download_selected() {
   echo "| WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING"
   echo "+=============================================================================="
   echo
-  echo "----------------Downloading Nvidia vGPU Driver Package v$(package_version "${package_name}")-----------------"
+  echo "----------------Downloading Nvidia vGPU Driver Package $(package_label "${package_name}")-----------------"
   echo "---------This could take some time, please don't close this window!------------"
   download_package "${package_name}"
   echo
-  echo "----Driver v$(package_version "${package_name}") is downloaded and ready for install actions.----"
+  echo "----Driver $(package_label "${package_name}") is downloaded and ready for install actions.----"
 }
 
 stop_vgpu_services() {
@@ -314,12 +446,12 @@ install_local_package() {
   local package_name="${1}"
 
   if ! /sbin/upgradepkg --install-new --reinstall "${PACKAGE_DIR}/${package_name}" >/dev/null; then
-    echo "Failed to install Nvidia vGPU Driver Package v$(package_version "${package_name}")"
+    echo "Failed to install Nvidia vGPU Driver Package $(package_label "${package_name}")"
     return 1
   fi
   activate_driver
   echo
-  echo "----------------Installed Nvidia vGPU Driver Package v$(package_version "${package_name}")----------------"
+  echo "----------------Installed Nvidia vGPU Driver Package $(package_label "${package_name}")----------------"
 }
 
 prepared_version() {
@@ -327,7 +459,7 @@ prepared_version() {
 
   package_name="$(resolve_local_target_package)"
   if [ -n "${package_name}" ]; then
-    package_version "${package_name}"
+    package_selector "${package_name}"
   fi
 }
 
@@ -341,15 +473,15 @@ boot_apply_selected() {
     exit 0
   fi
 
-  target_version="$(package_version "${package_name}")"
+  target_version="$(package_label "${package_name}")"
   installed_version="$(current_installed_version)"
 
-  if [ "${installed_version}" = "${target_version}" ]; then
-    relink_nvidia_userspace "${target_version}"
+  if [ "${installed_version}" = "$(package_version "${package_name}")" ]; then
+    relink_nvidia_userspace "${installed_version}"
     exit 0
   fi
 
-  echo "Applying prepared Nvidia vGPU Driver Package v${target_version} during boot..."
+  echo "Applying prepared Nvidia vGPU Driver Package ${target_version} during boot..."
   stop_vgpu_services
   if ! unload_nvidia_modules >/dev/null 2>&1; then
     echo "Failed to unload existing Nvidia modules during boot apply."
@@ -376,10 +508,10 @@ hot_upgrade_selected() {
     exit 1
   fi
 
-  target_version="$(package_version "${package_name}")"
+  target_version="$(package_label "${package_name}")"
 
   echo
-  echo "----------------Starting experimental hot upgrade to v${target_version}----------------"
+  echo "----------------Starting experimental hot upgrade to ${target_version}----------------"
   echo "-------Make sure no VM, Docker container, or host workload is using the GPU.-------"
 
   stop_vgpu_services
@@ -400,8 +532,8 @@ download_reboot_selected() {
   selected_pkg="$(resolve_local_target_package "${requested}")"
 
   echo
-  echo "Scheduling reboot to install Nvidia vGPU Driver Package v$(package_version "${selected_pkg}")..."
-  /usr/local/emhttp/plugins/dynamix/scripts/notify -e "Nvidia vGPU Driver" -d "Reboot scheduled to install Nvidia vGPU Driver v$(package_version "${selected_pkg}")" -i "alert" -l "/Main"
+  echo "Scheduling reboot to install Nvidia vGPU Driver Package $(package_label "${selected_pkg}")..."
+  /usr/local/emhttp/plugins/dynamix/scripts/notify -e "Nvidia vGPU Driver" -d "Reboot scheduled to install Nvidia vGPU Driver $(package_label "${selected_pkg}")" -i "alert" -l "/Main"
   nohup bash -c 'sleep 3; /sbin/reboot' >/dev/null 2>&1 &
 }
 
@@ -431,6 +563,12 @@ case "${1}" in
     ;;
   prepared_version)
     prepared_version
+    ;;
+  current_installed_selector)
+    current_installed_selector
+    ;;
+  selector_label)
+    selector_label "${2}"
     ;;
   *)
     echo "Unknown action: ${1}"

@@ -1,38 +1,38 @@
-# Unraid Nvidia vGPU Driver plugin
-[中文说明](README.zh-CN.md)
+# Unraid Nvidia vGPU Driver 插件
+[English README](README.md)
 
-Packages without the `merged` marker are KVM-only and focus on vGPU usage in virtual machines. Packages that include the `merged` marker are intended for merged Docker + vGPU deployments.
+不带 `merged` 标记的驱动包为单独的 KVM 版本，主要面向虚拟机中的 vGPU 使用。带 `merged` 标记的驱动包用于支持 Docker + vGPU 的 merged 部署场景。
 
-- Latest version currently supported: Check releases tab
+- 当前支持的最新版本：请查看 Releases 页面
 
-- Unraid driver for vgpu. Split GPU amongst VMs
+- 这是一个适用于 Unraid 的 vGPU 驱动，可将一张 GPU 划分给多个虚拟机使用
 
-- This is the repository for the Unraid vGPU Driver plugin.
+- 本仓库用于维护 Unraid vGPU Driver 插件
 
-- Install plugin (Plugins -> Install Plugin):
-- https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg
+- 安装插件（`Plugins -> Install Plugin`）：
+- `https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg`
 
-## Build Driver Packages
+## 构建驱动包
 
-- Plain KVM-only packages keep the original filename format:
+- 单独的 KVM 驱动包继续保持原有命名格式：
 - `nvidia-<version>-<kernel>-<build>.txz`
 
-- Merged packages include the `merged` marker in the filename:
+- merged 驱动包会在文件名中带上 `merged` 标记：
 - `nvidia-<version>-merged-<kernel>-<build>.txz`
 
-- Build a plain KVM package:
+- 构建单独的 KVM 驱动包：
 
 ```shell
 sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run
 ```
 
-- Build a merged Docker + vGPU package:
+- 构建支持 Docker + vGPU 的 merged 驱动包：
 
 ```shell
 sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run -g <nvidia_grid_package>.run
 ```
 
-- Example:
+- 示例：
 
 ```shell
 sudo ./unraid-nvidia-building.sh \
@@ -41,9 +41,9 @@ sudo ./unraid-nvidia-building.sh \
   -g NVIDIA-Linux-x86_64-535.247.01-grid.run
 ```
 
-- 1.Install 'user scripts' in the unraid app store
-- 2.Create a new run script. (Name customization)
-- 3.Newly created script content
+- 1. 在 Unraid 应用商店中安装 `User Scripts`
+- 2. 创建一个新的运行脚本（名称可自定义）
+- 3. 将下面内容填入新创建的脚本
 
 ```shell
 #!/bin/bash
@@ -81,8 +81,8 @@ echo " [i] Currently defined mdev devices:"
 mdevctl list
 ```
 
-- 4.Set the script to run when booting the array
-- 5.The VM edits the XML template with the following code:
+- 4. 将该脚本设置为阵列启动时自动运行
+- 5. 在虚拟机 XML 模板中加入以下内容：
 
     <hostdev mode='subsystem' type='mdev' managed='yes' model='vfio-pci' display='off' ramfb='off'>
       <source>
@@ -91,13 +91,13 @@ mdevctl list
       <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
     </hostdev>
 
-- uuid, bus , slot Modify according to your needs.
+- `uuid`、`bus`、`slot` 请根据你的实际环境修改
 
 
-### Credits
-- Thanks to stl88083365 for the unraid plugin foundation
-- Thanks to the discord user @mbuchel for the experimental patches
-- Thanks to the discord user @LIL'pingu for the extended 43 crash fix
-- Special thanks to @DualCoder without his work (vGPU_Unlock) we would not be here
-- and thanks to the discord user @snowman for creating this patcher
-- thanks to the discord user @midi creating this shell scripts
+### 致谢
+- 感谢 `stl88083365` 提供 unraid 插件基础
+- 感谢 Discord 用户 `@mbuchel` 提供实验性补丁
+- 感谢 Discord 用户 `@LIL'pingu` 提供扩展的 43 错误修复
+- 特别感谢 `@DualCoder`，没有他的工作（`vGPU_Unlock`）就不会有这个项目
+- 感谢 Discord 用户 `@snowman` 创建此 patcher
+- 感谢 Discord 用户 `@midi` 编写这些 shell 脚本

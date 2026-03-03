@@ -8,19 +8,20 @@ PACKAGE="nvidia"
 wget -qO- "https://api.github.com/repos/CaffeineCM/unraid-novidio-vgpu-driver/releases/tags/${KERNEL_V}" | jq -r '.assets[].name' | grep -E "^${PACKAGE}.*\.txz$" | grep -E -v '\.md5$' | sort -V
 }
 
-extract_driver_versions() {
-sed -nE 's/^nvidia[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' | sort -Vu
+extract_driver_selectors() {
+sed -nE 's/^nvidia-([0-9]+\.[0-9]+\.[0-9]+)(-merged)?-.*\.txz$/\1\2/p' | sort -Vu
 }
 
 function update(){
 {
-fetch_driver_assets 2>/dev/null | extract_driver_versions
+fetch_driver_assets 2>/dev/null | extract_driver_selectors
 ${DRIVER_HELPER} list_local_versions 2>/dev/null
 get_selected_version
 get_installed_version
-} | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu > /tmp/novidio_vgpu_driver
+get_prepared_version
+} | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-merged)?$' | sort -Vu > /tmp/novidio_vgpu_driver
 if [ ! -s /tmp/novidio_vgpu_driver ]; then
-  echo -n "$(modinfo nvidia | grep "version:" | awk '{print $2}' | head -1)" > /tmp/novidio_vgpu_driver
+  echo -n "$(${DRIVER_HELPER} current_installed_selector 2>/dev/null)" > /tmp/novidio_vgpu_driver
 fi
 }
 
@@ -46,7 +47,7 @@ echo -n "$(cat /boot/config/plugins/novidio-vgpu-driver/settings.cfg | grep "dri
 }
 
 function get_installed_version(){
-echo -n "$(modinfo nvidia | grep -w "version:" | awk '{print $2}')"
+echo -n "$(${DRIVER_HELPER} current_installed_selector 2>/dev/null)"
 }
 
 function get_prepared_version(){

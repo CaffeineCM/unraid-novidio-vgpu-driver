@@ -24,14 +24,14 @@ $mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/e
 //Get available mdev types from sysfs
 $mdev_types = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_types');
 
-//Read driver versions from '/tmp/novidio_vgpu_driver'
+//Read driver selectors from '/tmp/novidio_vgpu_driver'
 error_reporting(E_ALL);
 ini_set('display_errors',1);
-$available_versions = [];
+$available_selectors = [];
 $version_file = '/tmp/novidio_vgpu_driver';
 if (file_exists($version_file)) {
-	$available_versions = array_filter(array_map('trim', file($version_file, FILE_IGNORE_NEW_LINES)));
-	$available_versions = array_values(array_unique($available_versions));
+	$available_selectors = array_filter(array_map('trim', file($version_file, FILE_IGNORE_NEW_LINES)));
+	$available_selectors = array_values(array_unique($available_selectors));
 }
 
 //Get value from update check
@@ -150,6 +150,19 @@ function tr($string,$ret=false) {
 		return $string;
 	else
 		echo $string;
+}
+
+function formatDriverSelector($selector) {
+  if ($selector === '' || $selector === null) {
+    return '';
+  }
+  if ($selector === 'latest') {
+    return 'latest';
+  }
+  if (preg_match('/^(.*)-merged$/', $selector, $matches)) {
+    return $matches[1].' (merged)';
+  }
+  return $selector.' (kvm)';
 }
 
 function addCfg($filename) {
@@ -279,16 +292,16 @@ function setFormatButton() {
                 <td>
                     <select name="drv_version" style="min-width: 180px;">
                         <option value="latest" <?=$selected_v === 'latest' ? 'selected' : ''?>>latest</option>
-                        <? foreach ($available_versions as $version): ?>
-                            <option value="<?=$version?>" <?=$selected_v === $version ? 'selected' : ''?>><?=$version?></option>
+                        <? foreach ($available_selectors as $selector): ?>
+                            <option value="<?=htmlspecialchars($selector)?>" <?=$selected_v === $selector ? 'selected' : ''?>><?=htmlspecialchars(formatDriverSelector($selector))?></option>
                         <? endforeach; ?>
                     </select>
                     <input type="button" value="Download Only" onclick="return driverAction(this.form,'download_only','Download Driver');">
                 </td>
-                <td>Selected: <span style="color:green"><b><?=htmlspecialchars($selected_v ?: 'latest')?></b></span></td>
-                <td>Installed: <span style="color:green"><b><?=htmlspecialchars($installed_v ?: 'unknown')?></b></span></td>
-                <td>Prepared: <span style="color:green"><b><?=htmlspecialchars($prepared_v ?: 'none')?></b></span></td>
-                <td>Latest: <span style="color:green"><b><?=htmlspecialchars($latest_v ?: 'unknown')?></b></span></td>
+                <td>Selected: <span style="color:green"><b><?=htmlspecialchars(formatDriverSelector($selected_v ?: 'latest'))?></b></span></td>
+                <td>Installed: <span style="color:green"><b><?=htmlspecialchars($installed_v ? formatDriverSelector($installed_v) : 'unknown')?></b></span></td>
+                <td>Prepared: <span style="color:green"><b><?=htmlspecialchars($prepared_v ? formatDriverSelector($prepared_v) : 'none')?></b></span></td>
+                <td>Latest: <span style="color:green"><b><?=htmlspecialchars($latest_v ? formatDriverSelector($latest_v) : 'unknown')?></b></span></td>
             </tr>
             <tr>
                 <td></td>
@@ -302,7 +315,7 @@ function setFormatButton() {
                     <input type="file" name="driver_package" accept=".txz">
                     <input type="button" value="Upload Package" onclick="return uploadDriver(this.form);">
                     <div id="upload_status" style="margin-top:6px;color:#666;">
-                        Accepts `nvidia-&lt;version&gt;-<?=htmlspecialchars(`uname -r`)?>-&lt;build&gt;.txz` and validates key vGPU files before import.
+                        Accepts `nvidia-&lt;version&gt;-<?=htmlspecialchars(`uname -r`)?>-&lt;build&gt;.txz` or `nvidia-&lt;version&gt;-merged-<?=htmlspecialchars(`uname -r`)?>-&lt;build&gt;.txz` and validates the required files before import.
                     </div>
                 </td>
             </tr>
