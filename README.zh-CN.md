@@ -29,8 +29,10 @@ sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_p
 - 构建支持 Docker + vGPU 的 merged 驱动包：
 
 ```shell
-sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run -g <nvidia_grid_package>.run
+sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run -g <nvidia_base_driver_package>.run
 ```
+
+- `-g` 需要传入同版本分支的标准 Linux NVIDIA 驱动 `run` 文件，例如 `NVIDIA-Linux-x86_64-535.247.01.run`，而不是 `*-grid.run` 这种 guest 驱动包。
 
 - 示例：
 
@@ -38,7 +40,7 @@ sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_p
 sudo ./unraid-nvidia-building.sh \
   -u linux-6.12.24-Unraid \
   -n NVIDIA-Linux-x86_64-535.247.02-vgpu-kvm.run \
-  -g NVIDIA-Linux-x86_64-535.247.01-grid.run
+  -g NVIDIA-Linux-x86_64-535.247.01.run
 ```
 
 - 1. 在 Unraid 应用商店中安装 `User Scripts`

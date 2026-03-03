@@ -44,9 +44,9 @@ cleanup () {
 print_usage() {
 	cat <<EOF
 
- [i] Usage: sudo bash $(basename "$0") -n NVIDIA_VGPU_KVM_RUN.run -u UNRAID_SOURCE_FOLDER [-g NVIDIA_GRID_RUN.run] [-s] [-c]
+ [i] Usage: sudo bash $(basename "$0") -n NVIDIA_VGPU_KVM_RUN.run -u UNRAID_SOURCE_FOLDER [-g NVIDIA_BASE_DRIVER.run] [-s] [-c]
  [i] -n NVIDIA_VGPU_KVM_RUN.run
- [i] -g NVIDIA_GRID_RUN.run
+ [i] -g NVIDIA_BASE_DRIVER.run
  [i] -u UNRAID_SOURCE_FOLDER (linux-X.XX.XX-Unraid)
 
 EOF
@@ -87,18 +87,18 @@ files_prepare () {
   	echo "  [✓] Got Nvidia driver version: ${NV_DRV_V} "
 	fi
 	if [[ -n "${GRID_RUN}" ]]; then
-		[ ! -e "${DATA_DIR}/${GRID_RUN}" ] && echo " [!] Nvidia GRID driver package not found: ${GRID_RUN}" && exit 1
-		echo "  [i] Retrieving GRID drivers version from package..."
+		[ ! -e "${DATA_DIR}/${GRID_RUN}" ] && echo " [!] Nvidia base driver package not found: ${GRID_RUN}" && exit 1
+		echo "  [i] Retrieving base driver version from package..."
 		echo "  [i] It might take a while... Please wait."
 		GRID_DRV_V=$(driver_version_from_run "${DATA_DIR}/${GRID_RUN}")
 		if [[ -z "${GRID_DRV_V}" ]]; then
-			echo "  [!] Error while getting GRID driver version, please check package or with '--version' flag."
+			echo "  [!] Error while getting base driver version, please check package or with '--version' flag."
 			exit 1
 		fi
-		echo "  [✓] Got GRID driver version: ${GRID_DRV_V} "
+		echo "  [✓] Got base driver version: ${GRID_DRV_V} "
 	fi
 	if [[ -n "${NV_DRV_V}" ]] && [[ -n "${GRID_DRV_V}" ]] && [[ "$(driver_branch "${NV_DRV_V}")" != "$(driver_branch "${GRID_DRV_V}")" ]]; then
-		echo "  [!] The vGPU host driver (${NV_DRV_V}) and GRID driver (${GRID_DRV_V}) are not from the same branch."
+		echo "  [!] The vGPU host driver (${NV_DRV_V}) and base driver (${GRID_DRV_V}) are not from the same branch."
 		exit 1
 	fi
 	FREE_STG=$(df -k --output=avail "$PWD" | tail -n1)
@@ -134,6 +134,7 @@ files_prepare () {
 	mkdir -p "${DATA_TMP}" 
 	for stage_dir in "${PKG_TMP_D}" "${VGPU_TMP_D}" "${GRID_TMP_D}"; do
 		mkdir -p "${stage_dir}"/usr/lib64/xorg/modules/{drivers,extensions} \
+				"${stage_dir}"/usr/lib \
 				"${stage_dir}"/usr/bin \
 				"${stage_dir}"/etc \
 				"${stage_dir}"/lib/modules/"${UNAME%/}"/kernel/drivers/video \
@@ -216,6 +217,7 @@ install_runfile() {
 	local label="${3}"
 	local run_path="${DATA_DIR}/${run_file}"
 	local extracted_dir
+	local installer_dir
 	local nv_pid
 	local tail_pid
 	local ret=30
@@ -226,10 +228,19 @@ install_runfile() {
 	chmod +x "${run_path}" || { echo " [!] Error setting chmod on ${run_file}. Exiting."; exit 1; }
 
 	extracted_dir="$(basename "${run_file}" .run)"
-	if [ -d "${extracted_dir}" ]; then
-		echo "  [>] Removing old installer folder for ${run_file}"
-		rm -rf "${extracted_dir}" || { echo "  [!] Error while removing old installer folder"; exit 1; }
+	installer_dir="${DATA_TMP}/${extracted_dir}"
+	if [ -d "${installer_dir}" ]; then
+		echo "  [>] Removing old extracted installer folder for ${run_file}"
+		rm -rf "${installer_dir}" || { echo "  [!] Error while removing old installer folder"; exit 1; }
 	fi
+
+	echo "  [>] Extracting ${label} runfile..."
+	(
+		cd "${DATA_TMP}" &&
+		sh "${run_path}" --extract-only >>"${LOG_F}" 2>&1
+	) || { echo "  [!] Error while extracting ${run_file}. Exiting."; exit 1; }
+
+	[ -x "${installer_dir}/nvidia-installer" ] || { echo "  [!] Extracted installer not found in ${installer_dir}. Exiting."; exit 1; }
 
 	rm -f /var/log/nvidia-installer.log || true
 
@@ -240,7 +251,7 @@ install_runfile() {
    [i] The output of the log will be in ${LOG_F} too.
 NI
 
-	sh "${run_path}" --kernel-name="${UNAME%/}" \
+	"${installer_dir}/nvidia-installer" --kernel-name="${UNAME%/}" \
 	  --no-precompiled-interface \
 	  --disable-nouveau \
 	  --x-prefix="${target_dir}"/usr \
@@ -318,6 +329,64 @@ NQ
 			read -p "   [!] Are you sure you want to continue? $(echo $'\nThe resulting package may be broken!\n Press Enter to confirm.')" -n 1 -r
 	fi
 	echo 
+
+	collect_installer_artifacts "${installer_dir}" "${target_dir}" "${label}"
+}
+
+copy_matching_entries() {
+	local source_dir="${1}"
+	local destination_dir="${2}"
+	shift 2
+
+	local pattern
+	local entry
+	local -a matches=()
+
+	mkdir -p "${destination_dir}" || { echo "  [!] Error creating ${destination_dir}"; exit 1; }
+
+	shopt -s nullglob
+	for pattern in "$@"; do
+		for entry in "${source_dir}"/${pattern}; do
+			matches+=("${entry}")
+		done
+	done
+	shopt -u nullglob
+
+	for entry in "${matches[@]}"; do
+		cp -a "${entry}" "${destination_dir}"/ || { echo "  [!] Error copying ${entry} to ${destination_dir}"; exit 1; }
+	done
+}
+
+collect_installer_artifacts() {
+	local installer_dir="${1}"
+	local target_dir="${2}"
+	local label="${3}"
+	local module_dir="${target_dir}/lib/modules/${UNAME%/}/kernel/drivers/video"
+	local -a module_files=()
+	local module_file
+
+	echo "  [>] Collecting ${label} artifacts from ${installer_dir}"
+
+	mapfile -t module_files < <(find "${installer_dir}/kernel" -type f -name '*.ko' 2>/dev/null)
+	for module_file in "${module_files[@]}"; do
+		cp -a "${module_file}" "${module_dir}"/ || { echo "  [!] Error copying kernel module ${module_file}"; exit 1; }
+	done
+
+	copy_matching_entries "${installer_dir}" "${target_dir}/usr/lib64" "lib*.so*"
+	copy_matching_entries "${installer_dir}/32" "${target_dir}/usr/lib" "lib*.so*"
+	copy_matching_entries "${installer_dir}" "${target_dir}/usr/bin" \
+		"nvidia-smi" \
+		"nvidia-debugdump" \
+		"nvidia-persistenced" \
+		"nvidia-cuda-mps-control" \
+		"nvidia-cuda-mps-server" \
+		"nvidia-modprobe" \
+		"nvidia-bug-report.sh" \
+		"nvidia-vgpu-mgr" \
+		"nvidia-vgpud"
+
+	echo "  [✓] Collected ${label} artifacts."
+	echo
 }
 
 merge_driver_stages() {
@@ -507,7 +576,7 @@ main_run() {
 	run_cmd link_sauce
 	run_cmd prepare_installer_host
 	if [[ -n "${GRID_RUN}" ]]; then
-		run_cmd "install_runfile \"${GRID_RUN}\" \"${GRID_TMP_D}\" \"GRID driver\""
+		run_cmd "install_runfile \"${GRID_RUN}\" \"${GRID_TMP_D}\" \"base driver\""
 	fi
 	run_cmd "install_runfile \"${NV_RUN}\" \"${VGPU_TMP_D}\" \"vGPU host driver\""
 	run_cmd merge_driver_stages
@@ -531,7 +600,7 @@ while getopts 'n:g:u:shc' OPTION; do
 			;;
 		g)
 			GRID_RUN="$OPTARG"
-			echo " [i] Got Nvidia GRID driver: ${GRID_RUN}"
+			echo " [i] Got Nvidia base driver: ${GRID_RUN}"
 			;;
 		u)
 			UNRAID_DIR="$OPTARG"
@@ -599,7 +668,7 @@ elif [[ -n ${NV_RUN} ]] && [[ -n ${UNRAID_DIR} ]]; then
 	tee <<WEL
 
  [!] Welcome to Nvidia driver packager for Unraid
- [!] Note: Use [-g] with a matching GRID driver runfile to build a merged Docker + vGPU package.
+ [!] Note: Use [-g] with a matching standard Linux driver runfile to build a merged Docker + vGPU package.
  [!] Sleeping 3 seconds before proceeding...
 
 WEL

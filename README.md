@@ -29,8 +29,10 @@ sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_p
 - Build a merged Docker + vGPU package:
 
 ```shell
-sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run -g <nvidia_grid_package>.run
+sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_package>.run -g <nvidia_base_driver_package>.run
 ```
+
+- `-g` should point to the matching standard Linux NVIDIA driver runfile, for example `NVIDIA-Linux-x86_64-535.247.01.run`, not the `*-grid.run` guest package.
 
 - Example:
 
@@ -38,7 +40,7 @@ sudo ./unraid-nvidia-building.sh -u linux-<version>-Unraid -n <nvidia_vgpu_kvm_p
 sudo ./unraid-nvidia-building.sh \
   -u linux-6.12.24-Unraid \
   -n NVIDIA-Linux-x86_64-535.247.02-vgpu-kvm.run \
-  -g NVIDIA-Linux-x86_64-535.247.01-grid.run
+  -g NVIDIA-Linux-x86_64-535.247.01.run
 ```
 
 - 1.Install 'user scripts' in the unraid app store
