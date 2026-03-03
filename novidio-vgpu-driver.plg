@@ -1,78 +1,25 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.02k" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
+<PLUGIN name="novidio-vgpu-driver" author="CaffeineCM" version="2026.03.03a" icon="microchip" launch="Settings/novidio-vgpu-driver" pluginURL="https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/novidio-vgpu-driver.plg" min="6.11.5" support="https://www.lxg2016.com/">
 
 <CHANGES>
-##2026.03.02k
-- Show mdev devices and supported types from sysfs instead of requiring mdevctl
+##2026.03.03a
+- Merge the 2026.03.01 through 2026.03.02 changes into a single stable release
+- Add manual driver version selection plus validated local package upload support in the web UI
+- Preserve selected, installed, and uploaded package versions in the dropdown when remote lookup fails
+- Add persistent driver action logging and expose safer download-only and reboot-based install actions
+- Stop automatic driver download and installation during plugin install, and apply prepared packages during boot
+- Retry downloads cleanly, refresh package state correctly, and restore executable helper permissions
+- Repair stale NVIDIA userspace symlinks after switching driver versions and stop reporting boot-time installs as successful on failure
+- Show mdev devices and supported types directly from sysfs instead of requiring mdevctl
 
-##2026.03.02j
-- Fix driver version dropdown population on Unraid by replacing non-portable local package discovery
-- Preserve selected and installed versions in the dropdown when remote release lookup fails
-
-##2026.03.02i
-- Add persistent driver action logging and expose view/download buttons in the web UI
-
-##2026.03.02h
-- Repair stale NVIDIA userspace library symlinks after switching driver versions
-- Stop reporting boot-time driver application as successful when module unload or package install fails
-
-##2026.03.02g
-- Add validated local driver package upload support in the web UI
-- Merge uploaded local packages into the selectable driver version list
-
-##2026.03.02f
-- Remove the download-and-reboot UI action and keep reboot as a manual step
-
-##2026.03.02e
-- Retry driver downloads cleanly by replacing stale partial files
-- Hide the hot-upgrade button and keep only the reboot-safe actions in the UI
-
-##2026.03.02d
-- Add boot-time installation of the prepared driver package
-- Add manual action buttons for hot upgrade, download only, and download plus reboot
-
-##2026.03.02c
-- Stop automatically downloading and installing the driver during plugin installation
-
-##2026.03.02b
-- Fix explicit driver version downloads for asset names that include the Unraid kernel version
-
-##2026.03.02a
-- Restore executable permissions for plugin shell helpers so version detection works
-
-##2026.03.01j
-- Fix missing function terminator in exec.sh after removing version cache
-
-##2026.03.01i
-- Remove driver version list cache so the plugin page always refreshes release versions
-
-##2026.03.01h
-- Fix driver version list parsing from GitHub release asset names
-
-##2026.03.01g
-- Add manual driver version selection in the plugin page
-- Allow downloading an explicitly selected driver version
-
-##2026.03.01f
-- Refresh package after version list update
-
-##2026.03.01e
-- Fix XML escaping in the install script
-
-##2026.03.01d
-- Add plugin icon metadata for the Plugins page
-- Use an explicit icon path for the Settings page
-- Skip restarting vGPU daemons when the commands are unavailable
-
-##2026.03.01c
-- Fix .page file format (LF, no BOM) to avoid webgui white screen
-
-##2026.03.01b
-- Point plugin downloads to CaffeineCM repository
-
-##2026.03.01
-- Update vGPU version list to 580.82.02
-- Fix version list fetch in download script
+- 合并 2026.03.01 至 2026.03.02 期间的所有中间更新，整理为一个可用的稳定版本
+- 在 Web UI 中新增手动驱动版本选择，并支持带校验的本地驱动包上传
+- 当远程版本获取失败时，仍保留下拉框中的已选版本、已安装版本和本地导入版本
+- 增加持久化驱动操作日志，并提供更安全的仅下载与重启安装操作
+- 取消插件安装时自动下载和安装驱动，改为在启动阶段应用已准备好的驱动包
+- 优化下载重试与包状态刷新逻辑，并恢复辅助脚本的可执行权限
+- 修复切换驱动版本后 NVIDIA 用户态库符号链接残留问题，并避免在启动安装失败时误报成功
+- 改为直接从 sysfs 读取 mdev 设备及其支持类型，不再依赖 mdevctl
 
 ##2025.01.22
 - Fix naming issues and plugin page name
@@ -110,13 +57,13 @@
 
 <FILE Run="/bin/bash">
 <INLINE>
-rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.02j')
+rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/dev/null|grep -v '2026.03.03a')
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.02j.txz" Run="upgradepkg --install-new --reinstall">
-<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.02j.txz</URL>
-<MD5>130bd91fad22f6dc8ff42fdf3b786f3b</MD5>
+<FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.03a.txz" Run="upgradepkg --install-new --reinstall">
+<URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.03a.txz</URL>
+<MD5>9109326857372f8f9e45ac2e976a6484</MD5>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
@@ -231,7 +178,7 @@ echo "----------------------------------------"
 echo "---Uninstalling Nvidia vGPU driver package---"
 echo "----------------------------------------"
 # Remove plugin related files
-removepkg novidio-vgpu-driver-2026.03.02j;
+removepkg novidio-vgpu-driver-2026.03.03a;
 crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &amp;&gt;/dev/null 2&gt;&amp;1'  | crontab -
 rm -rf /usr/local/emhttp/plugins/novidio-vgpu-driver;
 rm -rf /boot/config/plugins/novidio-vgpu-driver;
