@@ -266,6 +266,11 @@ validate_package_contents() {
     return 1
   fi
 
+  if ! echo "${contents}" | grep -Eq '(^|/)(usr/share/nvidia/(vgpu/)?vgpuConfig\.xml)$'; then
+    echo "Upload rejected: package is missing usr/share/nvidia/vgpu/vgpuConfig.xml"
+    return 1
+  fi
+
   if ! echo "${contents}" | grep -Eq "(^|/)lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia\\.ko$"; then
     echo "Upload rejected: package is missing lib/modules/${KERNEL_V}/kernel/drivers/video/nvidia.ko"
     return 1
@@ -405,11 +410,29 @@ stop_vgpu_services() {
 }
 
 start_vgpu_services() {
+  rm -rf /var/run/nvidia-vgpu-mgr /run/nvidia-vgpu-mgr /var/run/nvidia-vgpud /run/nvidia-vgpud
+  mkdir -p /etc/nvidia
+
+  if [ -r /usr/share/nvidia/vgpu/vgpuConfig.xml ]; then
+    ln -sfn /usr/share/nvidia/vgpu/vgpuConfig.xml /usr/share/nvidia/vgpuConfig.xml
+    ln -sfn /usr/share/nvidia/vgpu/vgpuConfig.xml /etc/nvidia/vgpuConfig.xml
+  fi
+
+  nvidia-smi -pm 1 >/dev/null 2>&1 || true
+
   if command -v nvidia-vgpud >/dev/null 2>&1; then
-    LD_PRELOAD="${VGPU_PRELOAD}" nvidia-vgpud >/dev/null 2>&1 &
+    if [ -r "${VGPU_PRELOAD}" ]; then
+      LD_PRELOAD="${VGPU_PRELOAD}" nvidia-vgpud >/dev/null 2>&1 || true
+    else
+      nvidia-vgpud >/dev/null 2>&1 || true
+    fi
   fi
   if command -v nvidia-vgpu-mgr >/dev/null 2>&1; then
-    LD_PRELOAD="${VGPU_PRELOAD}" nvidia-vgpu-mgr >/dev/null 2>&1 &
+    if [ -r "${VGPU_PRELOAD}" ]; then
+      LD_PRELOAD="${VGPU_PRELOAD}" nvidia-vgpu-mgr >/dev/null 2>&1 &
+    else
+      nvidia-vgpu-mgr >/dev/null 2>&1 &
+    fi
   fi
 }
 
@@ -438,8 +461,8 @@ activate_driver() {
   depmod -a >/dev/null 2>&1 || true
   nvidia-modprobe >/dev/null 2>&1 || true
   modprobe nvidia >/dev/null 2>&1 || true
-  modprobe nvidia_vgpu_vfio >/dev/null 2>&1 || true
   start_vgpu_services
+  modprobe nvidia_vgpu_vfio >/dev/null 2>&1 || true
 }
 
 install_local_package() {
@@ -470,6 +493,7 @@ boot_apply_selected() {
 
   package_name="$(resolve_local_target_package)"
   if [ -z "${package_name}" ]; then
+    activate_driver
     exit 0
   fi
 
@@ -477,7 +501,7 @@ boot_apply_selected() {
   installed_version="$(current_installed_version)"
 
   if [ "${installed_version}" = "$(package_version "${package_name}")" ]; then
-    relink_nvidia_userspace "${installed_version}"
+    activate_driver
     exit 0
   fi
 

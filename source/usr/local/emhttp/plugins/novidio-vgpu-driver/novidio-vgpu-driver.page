@@ -3,26 +3,31 @@ Title="Novidio Vgpu Driver"
 Icon="/plugins/novidio-vgpu-driver/images/nvidia-driver.png"
 ---
 <?php
+function novidio_shell_exec_output($command) {
+	$output = shell_exec($command);
+	return is_string($output) ? trim($output) : '';
+}
+
 //Get selected driver version
-$selected_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_selected_version'));
+$selected_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_selected_version');
 
 //Update driver versions and create file '/tmp/novidio_vgpu_driver'
 shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh update');
 
 //Get latest version
-$latest_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_latest_version'));
+$latest_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_latest_version');
 
 //Get current installed driver version
-$installed_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_installed_version'));
+$installed_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_installed_version');
 
 //Get prepared driver version
-$prepared_v = trim(shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_prepared_version'));
+$prepared_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_prepared_version');
 
 //Get active mdev devices from sysfs
-$mdev_list = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
+$mdev_list = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
 
 //Get available mdev types from sysfs
-$mdev_types = shell_exec('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_types');
+$mdev_types = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_types');
 
 //Read driver selectors from '/tmp/novidio_vgpu_driver'
 error_reporting(E_ALL);
@@ -361,7 +366,7 @@ function setFormatButton() {
         <tr>
             <td>mdev Devices:</td>
 				<? if ($mdev_list !== ''): ?>
-					<td style="color:green"><b><?=nl2br(htmlspecialchars(trim($mdev_list)))?></b></td>
+					<td style="color:green"><b><?=nl2br(htmlspecialchars($mdev_list))?></b></td>
 				<? else: ?>
 					<td style="color:#666">No mdev devices defined.</td>
 				<? endif; ?>
@@ -381,7 +386,7 @@ function setFormatButton() {
 			<? if ($mdev_types !== ''): ?>
 			<td style="color:green">
                 <div>
-                    <b><?=nl2br(htmlspecialchars(trim($mdev_types)))?></b>
+                    <b><?=nl2br(htmlspecialchars($mdev_types))?></b>
                 </div>
             </td>
 			<? else: ?>

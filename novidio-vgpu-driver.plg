@@ -63,7 +63,7 @@ rm -f $(ls /boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver*.txz 2>/
 
 <FILE Name="/boot/config/plugins/novidio-vgpu-driver/novidio-vgpu-driver-2026.03.03a.txz" Run="upgradepkg --install-new --reinstall">
 <URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/packages/novidio-vgpu-driver-2026.03.03a.txz</URL>
-<MD5>9109326857372f8f9e45ac2e976a6484</MD5>
+<MD5>324d89ad2baaaba98b43792b1a30c1a5</MD5>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/README.md">
@@ -81,7 +81,7 @@ This plugin will install the nvidia vgpu driver, which will reuse your graphics 
 
 <FILE Name="/usr/local/emhttp/plugins/novidio-vgpu-driver/novidio-vgpu-driver.page">
 <URL>https://raw.githubusercontent.com/CaffeineCM/unraid-novidio-vgpu-driver/master/source/usr/local/emhttp/plugins/novidio-vgpu-driver/novidio-vgpu-driver.page</URL>
-<MD5>105cdc52e891d98b08275a4991568a84</MD5>
+<MD5>c67ebe30995ea9ee15a0cd1191c76242</MD5>
 </FILE>
 
 <FILE Run="/bin/bash">
@@ -125,8 +125,6 @@ fi
 
 #unlock gpu 
 echo "unlock = false" > /etc/vgpu_unlock/config.toml
-
-env LD_PRELOAD=/usr/local/lib/libvgpu_unlock_rs.so >/dev/null
 
 chmod 0755 /usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh
 
