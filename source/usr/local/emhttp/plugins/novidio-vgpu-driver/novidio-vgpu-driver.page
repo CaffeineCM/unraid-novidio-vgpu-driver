@@ -23,6 +23,10 @@ $installed_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu
 //Get prepared driver version
 $prepared_v = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_prepared_version');
 
+//Get persistent vGPU Unlock setting and runtime library availability
+$vgpu_unlock = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_vgpu_unlock');
+$vgpu_unlock_library = is_readable('/usr/local/lib/libvgpu_unlock_rs.so');
+
 //Get active mdev devices from sysfs
 $mdev_list = novidio_shell_exec_output('/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh get_mdev_list');
 
@@ -106,6 +110,40 @@ function uploadDriver(form) {
                 result = JSON.parse(xhr.responseText);
             } catch (err) {}
             status.css("color", "red").text(result.message || "Upload failed.");
+        }
+    });
+
+    return false;
+}
+
+function setVgpuUnlock(form) {
+    var enabled = form.vgpu_unlock.checked ? "true" : "false";
+    var status = $("#unlock_status");
+
+    status.css("color", "#666").text("Saving vGPU Unlock setting...");
+
+    $.ajax({
+        url: caURL,
+        method: "POST",
+        data: {action: "set_vgpu_unlock", enabled: enabled},
+        success: function(response) {
+            var result = response;
+            if (typeof response === "string") {
+                result = JSON.parse(response);
+            }
+            if (result.success) {
+                status.css("color", "green").text(result.message);
+                window.setTimeout(function() { window.location.reload(); }, 1200);
+            } else {
+                status.css("color", "red").text(result.message || "Unable to update vGPU Unlock.");
+            }
+        },
+        error: function(xhr) {
+            var result = {};
+            try {
+                result = JSON.parse(xhr.responseText);
+            } catch (err) {}
+            status.css("color", "red").text(result.message || "Unable to update vGPU Unlock.");
         }
     });
 
@@ -312,6 +350,25 @@ function setFormatButton() {
                 <td></td>
                 <td colspan="5" style="color:#666;">
                     `Download Only` prepares a driver for later. Reboot manually when you are ready to apply the prepared driver.
+                </td>
+            </tr>
+            <tr>
+                <td><b><font size="+1">vGPU Unlock</font></b></td>
+                <td>
+                    <label>
+                        <input type="checkbox" name="vgpu_unlock" value="true" <?=$vgpu_unlock === 'true' ? 'checked' : ''?>>
+                        Enable unofficial vgpu_unlock
+                    </label>
+                    <input type="button" value="Save" onclick="return setVgpuUnlock(this.form);">
+                </td>
+                <td colspan="4">
+                    <div id="unlock_status" style="color:<?=$vgpu_unlock_library ? '#666' : 'red'?>;">
+                        <? if ($vgpu_unlock_library): ?>
+                            Reboot after changing this setting. Newer branches can expose legacy GPUs under different profile names and IDs; select the current value from `mdev Types` below.
+                        <? else: ?>
+                            `libvgpu_unlock_rs.so` is not installed by the active driver package. Enabling this setting will not unlock profiles until a compatible package is installed.
+                        <? endif; ?>
+                    </div>
                 </td>
             </tr>
             <tr>

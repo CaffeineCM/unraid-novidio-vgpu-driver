@@ -43,57 +43,87 @@ sudo ./unraid-nvidia-building.sh \
   -g NVIDIA-Linux-x86_64-535.247.01.run
 ```
 
-- 1.Install 'user scripts' in the unraid app store
-- 2.Create a new run script. (Name customization)
-- 3.Newly created script content
+## vGPU Unlock and profile selection
+
+`vGPU Unlock` is disabled by default. Enable it from **Settings -> Novidio Vgpu Driver** only when the active NVIDIA branch no longer exposes profiles for the physical GPU, then reboot before creating mdev devices.
+
+Profile IDs are driver-branch specific. For example, with vGPU 17 / R550, an unlocked Tesla P4 can expose the 4 GB profile as `GRID V40-4Q` / `nvidia-49` instead of the older `GRID P4-4Q` / `nvidia-65`. Always use the current values shown under **mdev Types** in the plugin page. Do not copy a type ID from another driver version.
+
+Unlock metadata can describe the spoofed target GPU rather than the physical card. Keep the total framebuffer assigned to active vGPUs within the physical GPU capacity, and leave framebuffer available for Docker workloads in a merged deployment.
+
+## Create mdev devices
+
+Install `User Scripts`, create a script that runs when the array starts, and adapt the following values. The script resolves the current type ID by profile name and does not require `mdevctl`.
 
 ```shell
 #!/bin/bash
-# set -x
+set -euo pipefail
 
-## Modify the following variables to suit your environment
-#WIN is the UUID for a VM
-#UBU is a second UUID for a VM. These two allow for splitting the GPU
-#NVPCI is the PCI ID for the GPU. Check the tools tab for this number
-#MDEVLIST is the profile you are going to use from the supported MDEVCTL list
-WIN="2b6976dd-8620-49de-8d8d-ae9ba47a50db"
-UBU="5fd6286d-06ac-4406-8b06-f26511c260d3"
 NVPCI="0000:03:00.0"
-MDEVLIST="nvidia-65"
+PROFILE_NAME="GRID V40-4Q"
+UUIDS=(
+  "2b6976dd-8620-49de-8d8d-ae9ba47a50db"
+)
 
-#define UUIDs for GPU
-#Change the variables below to match the ones above
-arr=( "${WIN}" "${UBU}" )
+TYPE_ROOT="/sys/class/mdev_bus/${NVPCI}/mdev_supported_types"
+TYPE_PATH=""
 
-for os in "${arr[@]}"; do
-    if [[ "$(mdevctl list)" == *"$os"* ]]; then
-        echo " [i] Found $os running, stopping and undefining..."
-        mdevctl stop -u "$os"
-        mdevctl undefine -u "$os"
+for i in {1..60}; do
+  for candidate in "${TYPE_ROOT}"/*; do
+    [ -r "${candidate}/name" ] || continue
+    if [ "$(cat "${candidate}/name")" = "${PROFILE_NAME}" ]; then
+      TYPE_PATH="${candidate}"
+      break
     fi
+  done
+  [ -n "${TYPE_PATH}" ] && break
+  sleep 2
 done
 
-for os in "${arr[@]}"; do
-    echo " [i] Defining and running $os..."
-    mdevctl define -u "$os" -p "$NVPCI" --type "$MDEVLIST"
-    mdevctl start -u "$os"
+if [ -z "${TYPE_PATH}" ]; then
+  echo "Profile not found: ${PROFILE_NAME}" >&2
+  find "${TYPE_ROOT}" -mindepth 2 -maxdepth 2 -type f -name name -print -exec cat {} \; 2>/dev/null || true
+  exit 1
+fi
+
+echo "Using ${PROFILE_NAME} ($(basename "${TYPE_PATH}")) on ${NVPCI}"
+
+for uuid in "${UUIDS[@]}"; do
+  if [ -e "/sys/bus/mdev/devices/${uuid}/remove" ]; then
+    echo 1 > "/sys/bus/mdev/devices/${uuid}/remove"
+  fi
+  echo "${uuid}" > "${TYPE_PATH}/create"
 done
 
-echo " [i] Currently defined mdev devices:"
-mdevctl list
+find /sys/bus/mdev/devices -mindepth 1 -maxdepth 1 -type l -printf '%f\n'
 ```
 
-- 4.Set the script to run when booting the array
-- 5.The VM edits the XML template with the following code:
+Add the corresponding UUID to the VM XML. Because the User Script creates the device, use `managed='no'`:
 
-    <hostdev mode='subsystem' type='mdev' managed='yes' model='vfio-pci' display='off' ramfb='off'>
-      <source>
-        <address uuid='2b6976dd-8620-49de-8d8d-ae9ba47a50db'/>
-      </source>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
-    </hostdev>
+```xml
+<hostdev mode='subsystem' type='mdev' managed='no' model='vfio-pci' display='off'>
+  <source>
+    <address uuid='2b6976dd-8620-49de-8d8d-ae9ba47a50db'/>
+  </source>
+  <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
+</hostdev>
+```
 
-- uuid, bus , slot Modify according to your needs.
+Adjust the UUID, bus, and slot for the VM.
+
+## Merged Docker + vGPU
+
+Use a package whose filename contains `merged`. The VM consumes an mdev UUID, while Docker must use the physical GPU UUID reported by `nvidia-smi -L`; an mdev UUID is not a CUDA/NVIDIA Container Toolkit device selector.
+
+For an NVIDIA Docker container, maintain these values:
+
+```text
+Extra Parameters: --runtime=nvidia
+NVIDIA_VISIBLE_DEVICES=GPU-<physical-GPU-UUID>
+NVIDIA_DRIVER_CAPABILITIES=all
+```
+
+The vGPU framebuffer remains reserved while the VM is running. Docker uses the remaining physical GPU memory and engines, so size the vGPU profiles accordingly.
 
 
 ### Credits

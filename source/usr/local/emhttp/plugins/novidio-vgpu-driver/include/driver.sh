@@ -409,7 +409,13 @@ stop_vgpu_services() {
   fi
 }
 
+vgpu_unlock_enabled() {
+  grep -Eq '^[[:space:]]*unlock[[:space:]]*=[[:space:]]*true[[:space:]]*$' /etc/vgpu_unlock/config.toml 2>/dev/null
+}
+
 start_vgpu_services() {
+  local unlock_state="disabled"
+
   rm -rf /var/run/nvidia-vgpu-mgr /run/nvidia-vgpu-mgr /var/run/nvidia-vgpud /run/nvidia-vgpud
   mkdir -p /etc/nvidia
 
@@ -419,6 +425,16 @@ start_vgpu_services() {
   fi
 
   nvidia-smi -pm 1 >/dev/null 2>&1 || true
+
+  if vgpu_unlock_enabled; then
+    unlock_state="enabled"
+  fi
+
+  if [ -r "${VGPU_PRELOAD}" ]; then
+    echo "Starting vGPU services with vgpu_unlock preload (unlock=${unlock_state})."
+  elif [ "${unlock_state}" = "enabled" ]; then
+    echo "Warning: vGPU Unlock is enabled but ${VGPU_PRELOAD} is missing; starting services without it."
+  fi
 
   if command -v nvidia-vgpud >/dev/null 2>&1; then
     if [ -r "${VGPU_PRELOAD}" ]; then

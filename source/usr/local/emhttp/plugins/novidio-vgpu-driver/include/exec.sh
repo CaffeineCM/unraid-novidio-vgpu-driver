@@ -1,6 +1,23 @@
 #!/bin/bash
 
 DRIVER_HELPER="/usr/local/emhttp/plugins/novidio-vgpu-driver/include/driver.sh"
+SETTINGS_FILE="/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
+VGPU_UNLOCK_CONFIG="/etc/vgpu_unlock/config.toml"
+
+get_setting() {
+local key="${1}"
+
+grep "^${key}=" "${SETTINGS_FILE}" 2>/dev/null | tail -1 | cut -d '=' -f2-
+}
+
+set_setting() {
+local key="${1}"
+local value="${2}"
+
+sed -i.bak "/^${key}=/d" "${SETTINGS_FILE}"
+rm -f "${SETTINGS_FILE}.bak"
+printf '%s=%s\n' "${key}" "${value}" >> "${SETTINGS_FILE}"
+}
 
 fetch_driver_assets() {
 KERNEL_V="$(uname -r)"
@@ -43,7 +60,7 @@ echo -n "$(cat /tmp/novidio_vgpu_driver | tail -1)"
 ##}
 
 function get_selected_version(){
-echo -n "$(cat /boot/config/plugins/novidio-vgpu-driver/settings.cfg | grep "driver_version" | cut -d '=' -f2)"
+echo -n "$(get_setting driver_version)"
 }
 
 function get_installed_version(){
@@ -55,7 +72,38 @@ echo -n "$(${DRIVER_HELPER} prepared_version 2>/dev/null)"
 }
 
 function update_check(){
-echo -n "$(cat /boot/config/plugins/novidio-vgpu-driver/settings.cfg | grep "update_check" | cut -d '=' -f2)"
+echo -n "$(get_setting update_check)"
+}
+
+function get_vgpu_unlock(){
+if [ "$(get_setting vgpu_unlock)" = "true" ]; then
+  echo -n "true"
+else
+  echo -n "false"
+fi
+}
+
+function change_vgpu_unlock(){
+local enabled="${1}"
+
+case "${enabled}" in
+  true|false)
+    ;;
+  *)
+    echo "Invalid vGPU Unlock value: ${enabled}" >&2
+    return 1
+    ;;
+esac
+
+set_setting vgpu_unlock "${enabled}"
+mkdir -p "$(dirname "${VGPU_UNLOCK_CONFIG}")"
+printf 'unlock = %s\n' "${enabled}" > "${VGPU_UNLOCK_CONFIG}"
+
+if [ "${enabled}" = "true" ]; then
+  echo "vGPU Unlock enabled. Reboot before creating mdev devices."
+else
+  echo "vGPU Unlock disabled. Reboot before creating mdev devices."
+fi
 }
 
 function get_nvidia_pci_id(){
@@ -151,23 +199,32 @@ function get_flash_id(){
 aaa="$(udevadm info -q all -n /dev/sda1 | grep -i by-uuid | head -1)" && echo "${aaa:0-9:9}"
 }
 function change_update_check(){
-sed -i "/update_check=/c\update_check=${1}" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
+case "${1}" in
+  true|false)
+    ;;
+  *)
+    echo "Invalid update check value: ${1}" >&2
+    return 1
+    ;;
+esac
+
+set_setting update_check "${1}"
 if [ "${1}" == "true" ]; then
-  if [ ! "$(crontab -l | grep "/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh")" ]; then
-    echo -n "$((crontab -l ; echo ""$((0 + $RANDOM % 59))" "$(shuf -i 8-9 -n 1)" * * * /usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1") | crontab -)"
+  if ! crontab -l 2>/dev/null | grep -q "/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh"; then
+    (crontab -l 2>/dev/null; echo "$((0 + RANDOM % 59)) $(shuf -i 8-9 -n 1) * * * /usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1") | crontab -
   fi
 elif [ "${1}" == "false" ]; then
-  echo -n "$(crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1'  | crontab -)"
+  crontab -l 2>/dev/null | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh' | crontab -
 fi
 
 }
 
 function run_action(){
 version="${2:-latest}"
-sed -i "/driver_version=/c\driver_version=${version}" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
+set_setting driver_version "${version}"
 if [ "${version}" != "latest" ]; then
-  sed -i "/update_check=/c\update_check=false" "/boot/config/plugins/novidio-vgpu-driver/settings.cfg"
-  echo -n "$(crontab -l | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh &>/dev/null 2>&1'  | crontab -)"
+  set_setting update_check false
+  crontab -l 2>/dev/null | grep -v '/usr/local/emhttp/plugins/novidio-vgpu-driver/include/update-check.sh' | crontab -
 fi
 ${DRIVER_HELPER} "${1}" "${version}"
 }

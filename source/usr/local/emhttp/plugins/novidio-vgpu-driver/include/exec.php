@@ -7,6 +7,7 @@
 
 $plugin = "novidio-vgpu-driver";
 $driverLog = "/boot/logs/novidio-vgpu-driver.log";
+$pluginExec = "/usr/local/emhttp/plugins/novidio-vgpu-driver/include/exec.sh";
 $docroot = $docroot ?: $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
 $translations = file_exists("$docroot/webGui/include/Translations.php");
 if ($translations) {
@@ -60,6 +61,29 @@ switch ($action) {
     } else {
       echo _("No Backup File Found");
     }
+    break;
+  case 'set_vgpu_unlock':
+    $enabled = $_POST['enabled'] ?? '';
+    if (!in_array($enabled, ['true', 'false'], true)) {
+      jsonResponse(['success' => false, 'message' => 'Invalid vGPU Unlock value.'], 400);
+    }
+
+    $command = escapeshellcmd($pluginExec).' change_vgpu_unlock '.escapeshellarg($enabled).' 2>&1';
+    $output = [];
+    $status = 0;
+    exec($command, $output, $status);
+
+    if ($status !== 0) {
+      jsonResponse([
+        'success' => false,
+        'message' => trim(implode("\n", $output)) ?: 'Unable to update vGPU Unlock.',
+      ], 500);
+    }
+
+    jsonResponse([
+      'success' => true,
+      'message' => trim(implode("\n", $output)),
+    ]);
     break;
   case 'upload_driver':
     if (!isset($_FILES['driver_package'])) {
